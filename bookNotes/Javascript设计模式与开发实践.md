@@ -290,7 +290,195 @@ document.getElementById('loginBtn').onclick = function() {
 
 ### 策略模式
 
+- 定义：定义一系列的算法，把它们一个个封装起来，并且使它们可以相互替换。
+- 一个基于策略模式的程序至少由两部分组成。第一部分是一组策略类，封装了具体的算法，并负责具体的计算过程。第二个部分是环境类Context，接受客户的请求，随后把请求委托给某一个策略类。
+- 多态性的体现
+- 在实际开发中，通常会把算法的含义扩散开来，可以用来封装一系列的业务规则。只要这些业务规则指向的目标一致，并可被替换使用：如表单校验。
+
+```javascript
+const strategies = {
+  isNonEmpty: function(value, errorMsg) {
+    if (value === '') {
+      return errorMsg;
+    }
+  },
+  minLength: function(value, length, errorMsg) {
+    if (value.length < length) {
+      return errorMsg;
+    }
+  },
+  isMobile: function(value, errorMsg) {
+    if (!/(^1[3|5|8][0-9]{9}$)/.test(value)) {
+      return errorMsg;
+    }
+  }
+}
+
+const Validator = function() {
+  this.cache = [];
+}
+
+Validator.prototype.add = function(dom, rule, errorMsg) {
+  const ary = rule.split(':');
+  this.cache.push(function() {
+    const strategy = ary.shift();
+    ary.unshift(dom.value);
+    ary.push(errorMsg);
+    return strategies[strategy].apply(dom, ary);
+  })
+}
+
+Validator.prototype.start = function() {
+  for (var i = 0, validataFunc; validataFunc = this.cache[i++];) {
+    const msg = validataFunc();
+    if (msg) return msg;
+  }
+}
+
+const registerForm = document.getElementById('registerForm');
+
+const validataFunc = function() {
+  const validator = new Validator();
+  validator.add(registerForm.userName, 'isNonEmpty', '用户名不能为空');
+  validator.add(registerForm.password, 'minLength:6', '密码长度不能少于6位');
+  validator.add(registerForm.phoneNumber, 'isMobile', '手机号码格式不正确');
+
+  const errorMsg = validator.start();
+  return errorMsg;
+}
+
+registerForm.onsubmit = function() {
+  const errorMsg = validataFunc();
+  if (errorMsg) {
+    alert(errorMsg);
+    return false;
+  }
+}
+```
+
 ### 代理模式
+
+- 当客户不方便直接访问一个对象或者不满足需要的时候，提供一个替身对象来控制对这个对象的访问，客户实际上访问的是替身对象。替身对象对请求做出一些处理之后，再把请求转交给本体对象。
+- 保护代理：用于控制不同权限的对象对目标对象的访问，js不容易实现
+- 虚拟代理：把一些开销很大的对象，延迟到真正需要它的时候才去创建。最常用，如图片预加载。
+
+```javascript
+const myImage = (function() {
+  const imgNode = document.createElement('img');
+  document.body.appendChild(imgNode);
+  return {
+    setSrc: function(src) {
+      imgNode.src = src;
+    }
+  }
+})();
+
+const proxyImage = (function() {
+  const img = new Image;
+  img.onload = function() {
+    myImage.setSrc(this.src);
+  }
+  return {
+    setSrc: function(src) {
+      myImage.setSrc('./loading.gif');
+      img.src = src;
+    }
+  }
+})();
+
+proxyImage.setSrc('./photo.jpg');
+```
+
+- 代理和本体接口的一致性的好处：
+  1. 用户可以放心地请求代理，只关心是否能得到想要的结果；
+  2. 在任何使用本体的地方都可以替换成使用代理。
+
+- 虚拟代理合并HTTP请求：
+
+  web开发中最大的开销就是网络请求。假设一个文件同步的功能，选中一个checkbox时对应的文件就会同步到另一台备用服务器上。可以通过一个代理函数来收集一段时间之内的请求，最后一次性发送给服务器
+
+```javascript
+const synchronousFile = function(id) {
+  console.log('文件id为：' + id);
+}
+
+const proxySynchronousFile = (function() {
+  const cache = [], timer;
+  return function(id) {
+    cache.push(id);
+    if (timer) {
+      return;
+    }
+    timer = setTimeout(function() {
+      synchronousFile(cache.join(','));
+      clearTimeout(timer);
+      timer = null;
+      cache.length = 0;
+    })
+  }
+})();
+
+const checkbox = document.getElementsByTagName('input');
+for (var i = 0, c; c = checkbox[i++];) {
+  c.onclick = function() {
+    if (this.checked === true) {
+      proxySynchronousFile(this.id);
+    }
+  }
+}
+```
+
+- 虚拟代理惰性加载
+
+  等用户按下F2唤出控制台的时候才开始加载真正的miniConsole.js代码
+
+```javascript
+const miniConsole = (function() {
+  const cache = [];
+  const handler = function(ev) {
+    if (ev.keyCode === 113) {
+      const script = document.createElement('script');
+      script.onload = function() {
+        for (var i = 0, fn; fn = cache[i++];) {
+          fn();
+        }
+      }
+      script.src = 'miniConsole.js';
+      document.getElementsByTagName('head')[0].appendChild(script);
+      document.body.removeEventListener('keydown', handler); // 只加载一次
+    }
+  }
+
+  document.body.addEventListener('keydown', handler, false);
+  return {
+    log: function() {
+      const arg = arguments;
+      cache.push(function() {
+        return miniConsole.log.apply(miniConsole, args);
+      });
+    }
+  }
+})();
+
+miniConsole.log(11);
+
+// miniConsole.js代码
+miniConsole = {
+  log: function() {
+    console.log(Array.prototype.join.call(arguments));
+  }
+}
+```
+
+- 缓存代理
+
+  为一些开销大的运算结果提供暂时的存储，下次运算时，如果参数和之前一直，则可以返回存储的结果
+
+  例子：计算乘积、Ajax异步请求数据
+
+- 其他代理模式
+
+  防火墙代理、远程代理、智能引用代理、写时复制代理
 
 ### 迭代器模式
 
