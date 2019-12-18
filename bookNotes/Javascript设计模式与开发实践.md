@@ -482,6 +482,125 @@ miniConsole = {
 
 ### 迭代器模式
 
+- 提供一种方法顺序访问一个聚合对象中的各个元素，而又不需要暴露该对象的内部表示。
+
+- 可以把迭代的过程从业务逻辑中分离出来，即使不关心对象的内部构造，也可以按顺序访问其中的每个元素。
+
+- 内部迭代器
+
+  内部已经定义好了迭代规则，完全接手整个迭代过程，外部只需要一次初始调用。
+
+- 外部迭代器
+
+  - 必须显式请求迭代下一个元素。可以手工控制迭代的过程或顺序
+
+  ```javascript
+  const Iterator = function(obj) {
+    let current = 0;
+    const next = function() {
+      current += 1;
+    }
+    const isDone = function() {
+      return current >= obj.length;
+    }
+    const getCurrentItem = function() {
+      return obj[current];
+    }
+    return {
+      next,
+      isDone,
+      getCurrentItem,
+      length,
+    }
+  }
+  
+  const compare = function(iterator1, iterator2) {
+    if (iterator1.length !== iterator2.length) {
+      alert('iterator1和iterator2不相等');
+    }
+    while(!iterator1.isDone() && !iterator2.isDone()) {
+      if (iterator1.getCurrentItem() !== iterator2.getCurrentItem()) {
+        throw new Error('iterator1和iterator2不相等');
+      }
+      iterator1.next();
+      iterator2.next();
+    }
+    alert('iterator1和iterator2不相等');
+  }
+  
+  const iterator1 = Iterator([1, 2, 3]);
+  const iterator2 = Iterator([1, 2, 3]);
+  compare(iterator1, iterator2);
+  ```
+
+- 不仅可以迭代数组，还可以迭代类数组的对象。只要被迭代的聚合对象拥有length属性且可用下标访问，就可被迭代。
+
+- 没有规定以顺序、倒序、还是中序来遍历对象
+
+- 可以提供一种跳出循环的方法
+
+  ```javascript
+  const each = function(obj, callback) {
+    const length = obj.length;
+    const isArray = isArrayLike(obj);
+    let value, i = 0;
+    if (isArray) {
+      // 倒序访问
+      for (i = length - 1; i >= 0; i--) {
+        value = callback.call(obj[i], i. obj[i]);
+        // 中止迭代器
+        if (value === false) {
+          break;
+        }
+      }
+    } else {
+      for ( i in obj) {
+        value = callback.call(obj[i], i, obj[i]);
+        if (value === false) {
+          break;
+        }
+      }
+    }
+    return obj;
+  }
+  ```
+
+- 应用举例：根据不同浏览器获取相应的上传组件对象
+
+  ```javascript
+  const getActiveUploadObj = function() {
+    try {
+      return new ActiveXObject('TXFTNActiveX.FTNUpload'); // IE上传控件
+    } catch(e) {
+      return false;
+    }
+  }
+  
+  const getFlashUploadObj = function() {
+    if (supportFlash()) {
+      const str = '<object type="application/x-shockwave-flash"></object>';
+      return $(str).appendTo($('body'));
+    }
+    return false;
+  }
+  
+  const getFormUploadObj = function() {
+    const str = '<input name="name" type="file"  />';
+    return $(str).appendTo($('body'));
+  }
+  
+  const iteratorUploadObj = function() {
+    for (let i = 0, fn; fn = arguments[i++];) {
+      const uploadObj = fn();
+      if (uploadObj !== false) {
+        return uploadObj;
+      }
+    }
+  }
+  
+  const uploadObj = iteratorUploadObj(getActiveUploadObj, getFlashUploadObj, getFormUploadObj);
+  ```
+
 ### 发布-订阅模式
 
 ### 命令模式
