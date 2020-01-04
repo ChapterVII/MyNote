@@ -601,7 +601,74 @@ miniConsole = {
   const uploadObj = iteratorUploadObj(getActiveUploadObj, getFlashUploadObj, getFormUploadObj);
   ```
 
-### 发布-订阅模式
+### 发布-订阅模式（观察者模式）
+
+1. 定义：对象间的一种一对多的依赖关系，当一个对象的状态发生改变时，所有依赖于它的对象都将得到通知。一般用事件模型来替代传统的发布订阅模式。
+
+2. 作用：可以广泛应用于异步编程中，替代传递回调函数的方案；可以取代对象之间硬编码的通知机制，一个对象不用再显式地调用另一个对象的某个接口。当有新的订阅者出现时，发布者的代码不需修改，同样发布者需要改变时，也不会影响到之前的订阅者。
+
+3. 实现：DOM事件、自定义事件。
+
+   1. 首先指定谁充当发布者。
+   2. 给发布者添加一个缓存列表，用于存放回调函数以便通知订阅者。
+   3. 发布消息时，发布者遍历这个缓存列表，依次触发里面存放的订阅者回调函数（可以往回调函数里填入一些参数，订阅者可以接收这些参数）。
+
+4. 取消订阅的事件：反向遍历订阅的回调函数列表，删除订阅者的回调函数。
+
+5. 全局的发布订阅模式：可以用一个全局的Event对象来实现，订阅者不需要了解消息来自哪个发布者，发布者也不知道消息会推送给哪些订阅者，Event作为一个类似”中介者“的角色，把订阅者和发布者联系起来。
+
+   注意：模块之间如果用了太多的全局发布-订阅模式来通信，那么模块与模块之间的联系就被隐藏到了背后，最终会搞不清楚消息来自哪个模块 ，或者消息会流向哪些模块，给维护带来一些麻烦，也许某个模块的作用就是暴露一些接口给其他模块调用。
+
+6. 某些情况下需要拥有先发布后订阅的能力。建立一个存放离线事件的堆栈，发布时，如果此时还没有订阅者来订阅，暂时把发布事件的动作包裹在一个函数里，这些包装函数被存入堆栈中，等到有对象来订阅此事件时，将遍历堆栈并依次执行包装函数，重新发布里面的事件。离线事件的生命周期只有一次。
+
+   ```javascript
+   const Event = (function() {
+     const clientList = [];
+     let listen, 
+         trigger, 
+         remove;
+     listen = function(key, fn) {
+       if (!clientList[key]) {
+         clientList[key] = [];
+       }
+       clientList[key].push(fn);
+     };
+   
+     trigger = function() {
+       const key = Array.prototype.shift.call(arguments);
+       const fns = clientList[key];
+       if (!fns || fns.length === 0) {
+         return false;
+       }
+       for(let i = 0, fn; fn = fns[i++];) {
+         fn.apply(this, arguments);
+       }
+     };
+   
+     remove = function(key, fn) {
+       const fns = clientList[key];
+       if (!fns) {
+         return false;
+       }
+       if (!fn) {
+         fns && (fns.length = 0);
+       } else {
+         for (let l = fns.length - 1; l >= 0; l--) {
+           const _fn = fns[l];
+           if (_fn === fn) {
+             fns.splice(l, 1);
+           }
+         }
+       }
+     };
+   
+     return {
+       listen,
+       trigger,
+       remove,
+     }
+   })();
+   ```
 
 ### 命令模式
 
