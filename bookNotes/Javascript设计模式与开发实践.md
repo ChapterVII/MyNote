@@ -771,6 +771,97 @@ miniConsole = {
 
 ### 组合模式
 
+- 命令模式中的宏命令中的macroCommand就是组合对象。closeDoorCommand、openPcCommand、openQQCommand都是叶对象。macroCommand只负责传递请求给叶对象，目的不在于控制对叶对象的访问。
+
+- 用途：
+
+  - 将对象组合成树形结构，以表示“部分-整体“的层次结构。
+  - 通过对象的多态性表现，使得用户对单个对象和组合对象的使用具有一致性。
+
+- 请求在书中传递的过程：如果子节点是叶对象，叶对象自身会处理这个请求。如果子节点是组合对象，请求会继续往下传递。叶对象下面不会再有其他子节点，一个叶对象就是树的这条职业的尽头，组合对象下面可能还会有子节点。请求从上到下沿着树进行传递，知道树的尽头。
+
+- javascript中实现组合模式的难点在于要保证组合对象和叶对象拥有同样的方法，通常需要用鸭子类型的思想进行接口检查。
+
+- 组合模式的透明性使得发起请求的客户不用去顾忌树中组合对象和叶对象的区别，也许会发生一些误操作，如往叶对象中添加子节点。解决方案通常是给叶对象添加add方法，调用时抛出异常。
+
+- 注意：
+
+  - 不是父子关系。是一种HAS-A（聚合）的关系，而不是IS-A。组合对象把请求委托给它所包含的所有叶对象，能够合作的关键是拥有相同的接口。
+  - 除了要求组合对象和叶对象拥有相同的接口外，还有一个必要条件，对一组叶对象的操作必须具有一致性。
+  - 复合情况下必须给父节点和子节点建立双向映射关系。一个简单的方法是增加集合来保存对方的引用，但相当复杂，而且对象之间产生了过多的耦合性，修改或删除都更困难。此时可以引入中介者模式来管理这些对象。
+  - 用职责链模式提高组合模式性能。当书的结构复杂，节点多，性能不好时，可以避免遍历整棵树，借助职责链模式。让请求顺着链条从父对象往子对象传递，或者反向传递，知道遇到可以处理该请求的对象为止。
+
+- 引用父对象：有时需要在子节点上保持对父节点的引用，比如使用职责链时可能需要让请求从子节点往父节点上冒泡传递。
+
+  ```javascript
+  const Folder = function(name) {
+    this.name = name;
+    this.parent = null;
+    this.files = [];
+  }
+  
+  Folder.prototype.add = function(file) {
+    file.parent = this;
+    this.files.push(file);
+  }
+  
+  Folder.prototype.scan = function() {
+    console.log('开始扫描文件夹： ' + this.name);
+    for (let i = 0, file, files = this.files; file = files[i++]; ) {
+      file.scan();
+    }
+  }
+  
+  Folder.prototype.remove = function() {
+    if (!this.parent) {
+      return;
+    }
+    for (let files = this.parent.files, l = files.length - 1; l >= 0; l--) {
+      const file = files[l];
+      if (file === this) {
+        files.splice(l, 1);
+      }
+    }
+  }
+  
+  const File = function(name) {
+    this.name = name;
+    this.parent = null;
+  }
+  
+  File.prototype.add = function() {
+    throw new Error('不能添加在文件下面');
+  }
+  
+  File.prototype.scan = function() {
+    console.log('开始扫描文件： ' + this.name);
+  }
+  
+  File.prototype.remove = function() {
+    if (!this.parent) {
+      return;
+    }
+    for (let files = this.parent.files, l = files.length - 1; l >= 0; l--) {
+      const file = files[l];
+      if (file === this) {
+        files.splice(l, 1);
+      }
+    }
+  }
+  
+  const folder = new Folder('学习资料');
+  const folder1 = new Folder('Javascript');
+  const file1 = new Folder('深入浅出Node.js');
+  folder1.add(new File('Javascript设计模式与开发实践'));
+  folder.add(folder1);
+  folder.add(file1);
+  
+  folder1.remove();
+  folder.scan();
+  ```
+
+  
+
 ### 模板方法模式
 
 ### 享元模式
