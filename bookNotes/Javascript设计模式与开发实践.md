@@ -672,6 +672,103 @@ miniConsole = {
 
 ### 命令模式
 
+- 应用场景：需要向某些对象发送请求，但并不知道请求的接收者是谁，也不知道请求的操作是什么。此时希望用一种松耦合的方式来设计程序，使得请求发送者和接收者能消除彼此之间的耦合关系。
+
+- 相对于过程化的请求调用，command对象拥有更长的生命周期。对象的生命周期是和初始请求无关的，因为这个请求已经被封装在了command对象的方法中，成为了这个对象的行为，可以在程序运行的任意时刻去调用这个方法。
+
+- 命令模式的由来，其实是回调函数的一个面向对象的替代品。
+
+- 可以使用闭包来完成
+
+- 撤销：给命令对象增加名为unexecude或undo的方法，在该方法里执行execute的反向操作。如果需要撤销一系列命令。可以把所有执行过的命令都储存在一个历史列表中，然后倒叙循环来依次执行这些命令的undo操作。
+
+- 重做：有些情况下无法顺利地用undo操作让对象回到execute之前的状态。如Canvas画图，使用命令模式在一些点之间画了N条曲线连接，但很难定义一个擦除某条曲线的undo操作。最好的办法是先清除画布，然后把执行过的命令全部重新执行以便，同样可以利用一个历史堆栈办到。记录命令日志，然后重复执行，这是逆转不可逆命令的一个好办法。
+
+  ```javascript
+  const MoveCommand = function(receiver, pos) {
+    this.receiver = receiver;
+    this.pos = pos;
+    this.oldPos = null;
+  }
+  
+  MoveCommand.prototype.execute = function() {
+    this.receiver.start('left', this.pos, 1000, 'strongEaseOut');
+    this.oldPos = this.receiver.dom.getBoundingClientRect()[this.receiver.propertyName];
+  }
+  
+  MoveCommand.prototype.undo = function() {
+    this.receiver.start('left', this.oldPos, 1000, 'strongEaseOut');
+  }
+  
+  let moveCommand;
+  const commandStack = [];
+  
+  moveBtn.onclick = function() {
+    let animate = new Animate(ball);
+    moveCommand = new MoveCommand(animate, pos.value);
+    commandStack.push(moveCommand);
+    moveCommand.execute();
+  }
+  
+  cancelBtn.onclick = function() {
+    moveCommand.undo();
+  }
+  
+  replyBtn.onclick = function() {
+    let command;
+    while(command = commandStack.shift()) {
+      command();
+    }
+  }
+  ```
+
+- 命令队列：把命令对象压进一个队列堆栈，当当前command对象的职责完成之后，回主动通知队列，此时取出正在队列中等待的第一个命令对象执行。
+
+- 宏命令：是一组命令的集合，通过执行宏命令的方式，可以一次执行一批命令。
+
+- 智能命令&傻瓜命令：一般来说，命令模式都会在command对象中保存一个接收者来负责真正执行客户的请求，这种情况下命令对象是“傻瓜式”的，只负责把客户的请求转交给接收者来执行，好处是请求发起者和请求接收者之间尽可能地得到了解耦。但是，“聪明地”命对象可以直接实现请求。这样就不再需要接收者的存在，也叫做智能命令，退化到和策略模式非常相近。
+
+  ```javascript
+  const closeDoorCommand = {
+    execute: function() {
+      console.log('关门');
+    }
+  };
+  
+  const openPcCommand = {
+    execute: function() {
+      console.log('开电脑');
+    }
+  };
+  
+  const openQQCommand = {
+    execute: function() {
+      console.log('登录QQ');
+    }
+  }
+  
+  const MacroCommand = function() {
+    return{
+      commandList: [],
+      add: function(command) {
+        this.commandList.push(command);
+      },
+      execute: function() {
+        for (let i = 0, command; command = this.commandList[i++];) {
+          command.execute();
+        }
+      }
+    }
+  }
+  
+  const macroCommand = MacroCommand();
+  macroCommand.add(closeDoorCommand);
+  macroCommand.add(openPcCommand);
+  macroCommand.add(openQQCommand);
+  
+  macroCommand.execute();
+  ```
+
 ### 组合模式
 
 ### 模板方法模式
