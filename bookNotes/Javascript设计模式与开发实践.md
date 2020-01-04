@@ -864,6 +864,100 @@ miniConsole = {
 
 ### 模板方法模式
 
+- 定义和组成：只需使用继承就可实现。由抽象父类和具体的实现子类组成。抽象父类中封装了子类的算法框架，包括实现一些公共方法以及封装子类中所有方法的执行顺序。子类通过继承这个抽象类，也继承了整个算法结构，并可以选择重写父类的方法。在模板方法模式中，子类视线中的相同部分被上移到父类中，而将不同的部分留待子类来实现。也体现了泛化的思想。
+
+- JavaScript没有抽象类
+
+  - 缺点：使用原型继承来模拟传统的类式继承时，没有编译器任何形式的检查，没有办法保证子类会重写父类中的抽象方法。
+  - 解决方案：
+    - 用鸭子类型来模拟接口检查。带来不必要的复杂性，要求添加一些跟业务无关的代码。
+    - 让父类的抽象方法直接抛出异常。实现简单，额外代价很少，但得到错误信息的时间点太靠后。
+
+- 使用场景：常被架构师用于搭建项目的框架、构建UI组件。
+
+- 钩子方法hook：放置钩子是隔离变化的一种常见手段。在父类中容易变化的地方放置钩子，钩子可以有一个默认的实现，究竟要不要”挂钩“，这由子类自行决定。钩子方法的返回结果巨顶了模板方法后面的执行步骤，也就是程序接下来的走向。
+
+- 好莱坞原则：允许底层组件将自己挂钩到高层组件中，而高层组件会决定什么时候、以何种方式去使用这些底层组件。
+
+  - 当使用模板方法模式时，意味着子类放弃了对自己的控制权，而是改为父类通知子类，哪些方法应该在什么时候被调用。作为子类，只负责提供一些设计上的细节。
+  - 其他场景：发布-订阅模式、回调函数。
+
+  ```javascript
+  const Beverage = function() {};
+  
+  Beverage.prototype.boilWater = function() {
+    console.log('把水煮沸');
+  }
+  
+  Beverage.prototype.brew = function() {
+    throw new Error('子类必须重写brew方法');
+  };
+  
+  Beverage.prototype.pourInCup = function() {
+    throw new Error('子类必须重写pourInCup方法');
+  };
+  
+  Beverage.prototype.addCondiments = function() {
+    throw new Error('子类必须重写addCondiments方法');
+  };
+  
+  Beverage.prototype.customerWantsCondiments = function() {
+    return true;  // 默认需要调料
+  }
+  
+  // 模板方法：该方法中封装了子类的算法框架，作为一个算法的模板，知道子类以何种顺序去执行哪些方法
+  Beverage.prototype.init = function() {
+    this.boilWater();
+    this.brew();
+    this.pourInCup();
+    if (this.customerWantsCondiments()) {
+      this.addCondiments();
+    }
+  }
+  
+  const Coffee = function() {};
+  Coffee.prototype = new Beverage();
+  
+  Coffee.prototype.brew = function() {
+    console.log('用沸水冲泡咖啡');
+  }
+  
+  Coffee.prototype.pourInCup = function() {
+    console.log('把咖啡倒进杯子');
+  }
+  
+  Coffee.prototype.addCondiments = function() {
+    console.log('加糖和牛奶');
+  }
+  
+  Coffee.prototype.customerWantsCondiments = function() {
+    return window.confirm('请问需要调料嘛？');
+  }
+  
+  const coffee = new Coffee();
+  coffee.init();
+  
+  const Tea = function() {};
+  Tea.prototype = new Beverage();
+  
+  Tea.prototype.brew = function() {
+    console.log('用沸水浸泡茶叶');
+  }
+  
+  Tea.prototype.pourInCup = function() {
+    console.log('把茶倒进杯子');
+  }
+  
+  Tea.prototype.addCondiments = function() {
+    console.log('加柠檬');
+  }
+  
+  const tea = new Tea();
+  tea.init();
+  ```
+
+  
+
 ### 享元模式
 
 ### 职责链模式
