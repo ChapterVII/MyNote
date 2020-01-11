@@ -966,6 +966,125 @@ miniConsole = {
 
 ### 享元模式
 
+- 用于性能优化，如系统中因为创建了大量类似的对象而导致内存占用过高。
+
+- 核心：运用共享技术来有效支持大量细粒度的对象。
+
+- 关键：将对象划分为内部状态和外部状态。
+
+  - 内部状态存储于对象内部；
+  - 内部状态可以被一些对象共享；
+  - 内部状态独立于具体的场景，通常不会改变；
+  - 外部状态取决于具体场景，并根据场景变化，不能被共享。
+
+- 过程：剥离外部状态，并把外部状态保存在其他地方，在核实的时刻再把外部状态组装进共享对象。
+
+- 适用性：
+
+  - 使用了大量的相似对象；
+  - 由于使用了大量对象，造成很大的内存开销；
+  - 大多数状态都可以变成外部状态；
+  - 剥离出对象的外部状态之后，可以用相对较少的共享对象取代大量的对象。
+
+  ```javascript
+  const Upload = function(uploadType) {
+    this.uploadType = uploadType;
+  }
+  
+  Upload.prototype.delFile = function(id) {
+    uploadManager.setExternalState(id, this);
+    if (this.fileSize < 3000) {
+      return this.dom.parentNode.removeChild(this);
+    }
+    if (window.confirm('确定删除该文件嘛？ ' + this.fileName)) {
+      return this.dom.parentNode.removeChild(this.dom);
+    }
+  }
+  
+  const UploadFactory = (function() {
+    const createdFlyWeightObjs = {};
+    return {
+      create: function(uploadType) {
+        if (createdFlyWeightObjs[uploadType]) {
+          return createdFlyWeightObjs[uploadType];
+        }
+        return createdFlyWeightObjs[uploadType] = new Upload(uploadType);
+      }
+    }
+  })();
+  
+  const uploadManager = (function() {
+    const uploadDatabase = {};
+    return {
+      add: function(id, uploadType, fileName, fileSize) {
+        const flyWeightObj = UploadFactory.create(uploadType);
+        const dom = document.createElement('div');
+        dom.innerHTML = '<span>文件名称：' + fileName + ', 文件大小：' + fileSize + '</span>' + 
+                        '<button class="delFile">删除</button>';
+        dom.querySelector('.delFile').onclick = function() {
+          flyWeightObj.delFile(id);
+        }
+        document.body.appendChild(dom);
+  
+        uploadDatabase[id] = {
+          fileName,
+          fileSize,
+          dom,
+        }
+        return flyWeightObj;
+      },
+      setExternalState: function(id, flyWeightObj) {
+        const uploadData = uploadDatabase[id];
+        for (let i in uploadData) {
+          flyWeightObj[i] = uploadData[i];
+        }
+      }
+    }
+  })();
+  ```
+
+- 可以没有内部状态，也可以没有外部状态。
+
+- 对象池：维护一个装载空闲对象的池子，如果需要对象的时候，不是直接new，而是转从对象池里获取。如果对象池里没有空闲对象，则创建新的对象，当获取出的对象完成职责后，再进入池子等待下次获取。是另外一种性能优化方案，但没有分离内部状态和外部状态的过程。
+
+  ```javascript
+  const objectPoolFactory = function(createObjFn) {
+    const objectPool = [];
+    return {
+      create: function() {
+        const obj = objectPool.length === 0 ? createObjFn.apply(this, arguments) : objectPool.shift();
+        return obj;
+      },
+      recover: function(obj) {
+        objectPool.push(obj);
+      }
+    }
+  }
+  
+  const iframeFactory = objectPoolFactory(function() {
+    const iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+    iframe.onload = function() {
+      iframe.onload = null;
+      iframeFactory.recover(iframe);
+    }
+    return iframe;
+  });
+  
+  const iframe1 = iframeFactory.create();
+  iframe1.src = 'http://baidu.com';
+  
+  const iframe2 = iframeFactory.create();
+  iframe2.src = 'http://QQ.com';
+  
+  setTimeout(function() {
+    const iframe3 = iframeFactory.create();
+    iframe3.src = 'http://163.com';
+  }, 3000);
+  ```
+
+  
+
 ### 职责链模式
 
 ### 中介者模式
