@@ -1621,6 +1621,46 @@ const ErrorState = StateFactory({
 
 ### 适配器模式
 
+- 作用：解决两个软件实体间的接口不兼容的问题。
+- 是一种“亡羊补牢”的模式：也许现在好好工作的接口，未来的某天却不再适用于新系统，可以使用适配器模式把旧的接口包装成新的接口，继续保持生命力。
+
+```javascript
+const getGuangdongCity = function() {
+  const guangdongCity = [
+    {
+      name: 'shenzhen',
+      id: 11,
+    },
+    {
+      name: 'guangzhou',
+      id: 12,
+    },
+  ];
+  return guangdongCity;
+}
+
+const render = function(fn) {
+  console.log('开始是渲染广东省地图');
+  document.write(JSON.stringify(fn()));
+}
+
+const addressAdpter = function(oldAddressfn) {
+  const address = {};
+  const oldAddress = oldAddressfn();
+  for (let i = 0, c; c = oldAddress[i++];) {
+    address[c.name] = c.id;
+  }
+
+  return function() {
+    return adrress;
+  }
+}
+
+render(addressAdpter(getGuangdongCity));
+```
+
+
+
 ## 设计原则和编程技巧
 
 ### 单一职责原则
