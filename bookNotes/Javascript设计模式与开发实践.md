@@ -1351,6 +1351,274 @@ submitBtn.onclick = function() {
 
 ### 状态模式
 
+- 定义：允许一个对象在其内部状态改变时改变它的行为，对象看起来似乎修改了它的类 。
+  - 将对象封装成独立的类，并将请求委托给当前的状态对象，当内部状态改变时，会带来不同的行为变化。
+  - 从客户的角度看，对象在不同的状态下具有不同的行为，看起来是从不同的类中实例化而来，实际上是使用了委托的效果。
+
+- 关键：区分事物内部的状态，事物内部状态的改变往往会带来事物的行为改变。把事物的每种状态都封装成单独的类，跟此种状态有关的行为都被封装在这个类的内部。
+- 通用结构：
+  1. 首先定义Context上下文；
+  2. 创建每一个状态类的实例对象，Context将持有这些状态对象的引用，以便请求委托给状态对象。用户的请求也是实现在Context中的。
+  3. 编写各种状态类
+
+```javascript
+const plugin = (function() {
+  const plugin = document.createElement('embed');
+  plugin.style.display = 'none';
+
+  plugin.type = 'application/txftn-webkit';
+
+  plugin.sign = function() {
+    console.log('开始文件扫描');
+  }
+
+  plugin.pause = function() {
+    console.log('暂停文件上传');
+  }
+
+  plugin.uploading = function() {
+    console.log('开始文件上传');
+  }
+
+  plugin.del = function() {
+    console.log('删除文件上传');
+  }
+
+  plugin.done = function() {
+    console.log('文件上传完成');
+  }
+
+  return plugin;
+})();
+
+const Upload = function(fileName) {
+  this.plugin = plugin;
+  this.fileName = fileName;
+  this.button1 = null;
+  this.button2 = null;
+  this.signState = new SignState(this);
+  this.uploadingState = new UploadingState(this);
+  this.pauseState = new PauseState(this);
+  this.doneState = new DoneState(this);
+  this.errorState = new ErrorState(this);
+  this.currState = this.signState;
+}
+
+Upload.prototype.init = function() {
+  this.dom = document.createElement('div');
+  this.dom.innerHTML = '<span>文件名称：' + this.fileName + '</span>' + 
+                      '<button data-action="button1">扫描中</button>' + 
+                      '<button data-action="button2">删除</button>';
+  document.body.appendChild(this.dom);
+  this.button1 = this.dom.querySelector('[data-action="button1"]');
+  this.button2 = this.dom.querySelector('[data-action="button2"]');
+  this.bindEvent();
+}
+
+Upload.prototype.bindEvent = function() {
+  const self = this;
+  this.button1.onclick = function() {
+    self.currState.clickHandler1();
+  }
+  this.button2.onclick = function() {
+    self.currState.clickHandler2();
+  }
+}
+
+Upload.prototype.sign = function() {
+  this.plugin.sign();
+  this.currState = this.signState;
+}
+
+Upload.prototype.uploading = function() {
+  this.button1.innerHTML = '正在上传，点击暂停';
+  this.plugin.uploading();
+  this.currState = this.uploadingState;
+}
+
+Upload.prototype.pause = function() {
+  this.button1.innerHTML = '已暂停，点击继续上传';
+  this.plugin.pause();
+  this.currState = this.pauseState;
+}
+
+Upload.prototype.done = function() {
+  this.button1.innerHTML = '上传完成';
+  this.plugin.done();
+  this.currState = this.doneState;
+}
+
+Upload.prototype.error = function() {
+  this.button1.innerHTML = '上传失败';
+  this.currState = this.errorState;
+}
+
+Upload.prototype.del = function() {
+  this.plugin.del();
+  this.dom.parentNode.removeChild(this.dom);
+}
+
+const StateFactory = (function() {
+  const State = function() {};
+
+  State.prototype.clickHandler1 = function() {
+    throw new Error('子类必须重写父类的clickHandler1方法');
+  }
+
+  State.prototype.clickHandler2 = function() {
+    throw new Error('子类必须重写父类的clickHandler2方法');
+  }
+
+  return function(param) {
+    const F = function(uploadObj) {
+      this.uploadObj = uploadObj;
+    }
+    F.prototype = new State();
+    for(let i in param) {
+      f.prototype[i] = param[i];
+    }
+    return F;
+  }
+})();
+
+const SignState = StateFactory({
+  clickHandler1: function() {
+    console.log('扫描中，点击无效...');
+  },
+  clickHandler2: function() {
+    console.log('文件正在上传中，不能删除');
+  }
+});
+
+const UploadingState = StateFactory({
+  clickHandler1: function() {
+    this.uploadObj.pause();
+  },
+  clickHandler2: function() {
+    console.log('文件正在上传中，不能删除');
+  }
+});
+
+const PauseState = StateFactory({
+  clickHandler1: function() {
+    this.uploadObj.uploading();
+  },
+  clickHandler2: function() {
+    this.uploadObj.del();
+  }
+});
+
+const DoneState = StateFactory({
+  clickHandler1: function() {
+    console.log('文件已完成上传，点击无效');
+  },
+  clickHandler2: function() {
+    this.uploadObj.del();
+  }
+});
+
+const ErrorState = StateFactory({
+  clickHandler1: function() {
+    console.log('文件上传失败，点击无效');
+  },
+  clickHandler2: function() {
+    this.uploadObj.del();
+  }
+});
+```
+
+- 优点：
+
+  - 通过增加新的状态类，很容易增加新的状态和转换。
+  - 避免Context无限膨胀，状态切换的逻辑分布在状态类中，也去掉了Context中原本过多的条件分支。
+  - 用对象代替字符串来记录当前状态，使得状态的切换更一目了然。
+  - Context中的请求动作和状态类中封装的行为非常容易地独立变化而互不影响。
+
+- 缺点
+
+  - 在系统中定义许多状态类，系统中因此增加不少对象。
+  - 造成了逻辑分散的问题，无法在一个地方看出整个状态机的逻辑。
+
+- 性能优化点：
+
+  - 有两种选择来管理state对象的创建和销毁。
+    - 仅当state对象被需要时才创建并随后销毁：如果state对象比较庞大，可以节省内存。
+    - 一开始就创建好所有的状态对象：如果状态改变很频繁
+  - state对象之间是可以共享的，也是享元模式的应用场景之一。
+
+- Javascript版本的状态机：没有规定让状态对象一定要从类中创建而来，可以非常方便的使用委托技术。
+
+  ```javascript
+  const delegate = function(client, delegation) {
+    return {
+      buttonWasPressed: function() { // 将客户的操作委托给delegation对象
+        return delegation.buttonWasPressed.apply(client, arguments);
+      }
+    }
+  }
+  
+  const FSM = {
+    off: {
+      buttonWasPressed: function() {
+        console.log('关灯');
+        this.button.innerHTML = '下一次按我是开灯';
+        this.currState = this.onState;
+      }
+    },
+    on: {
+      buttonWasPressed: function() {
+        console.log('开灯');
+        this.button.innerHTML = '下一次按我是关灯';
+        this.currState = this.offState;
+      }
+    }
+  }
+  
+  const Light = function() {
+    this.offState = delegate(this, FSM.off);
+    this.onState = delegate(this, FSM.on);
+    this.currState = this.offState;
+    this.button = null;
+  }
+  
+  Light.prototype.init = function() {
+    const button = document.createElement('button');
+    const self = this;
+    button.innerHTML = '已关灯';
+    this.button = document.body.appendChild(button);
+    this.button.onclick = function() {
+      self.currState.buttonWasPressed();
+    }
+  }
+  
+  const light = new Light();
+  light.init();
+  ```
+
+- 表驱动的有限状态机
+
+  []: https://github.com/jakesgordon/javascript-state-machine
+
+  ```javascript
+  const fsm = StateMachine.create({
+    initial: 'off',
+    events: [
+      {name: 'buttonWasPressed', from: 'off', to: 'on'},
+      {name: 'buttonWasPressed', from: 'on', to: 'off'},
+    ],
+    callbacks: {
+      onbuttonWasPressed: function(event, from, to) {
+        console.log(arguments);
+      }
+    },
+    error: function(eventName, from, to, args, errorCode, errorMsg) {
+      console.log(arguments);
+    }
+  });
+  ```
+
+  
+
 ### 适配器模式
 
 ## 设计原则和编程技巧
