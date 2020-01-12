@@ -1087,6 +1087,80 @@ miniConsole = {
 
 ### 职责链模式
 
+- 定义：使多个对象都有机会处理请求，从而避免请求的发送者和接收者之间的耦合关系，将这些对象（节点）连成一条链，并沿着这条链传递该请求，知道有一个对象处理它为止。
+
+- 优点：
+
+  - 解耦了请求发送者和N个接收者之间的复杂关系，由于不知道链中的哪个节点可以处理请求，所以只需把请求传递给第一个节点即可。
+  - 链中的节点对象可以灵活地拆分重组，增加或删除一个节点，或者改变节点在链中的位置都是轻而易举的事情。
+  - 可以手动指定起始节点，请求并不是非得从第一个节点开始传递。
+
+- 缺点：
+
+  - 不能保证某个请求一定会被链中的节点处理。可以在链尾增加一个保底的接收者节点来处理这种即将离开链尾的请求。
+  - 使得程序中多了一些节点对象，可能大部分节点并没有起到实质性作用，仅是让请求传递下去，从性能方面考虑，要避免过长的职责链带来的性能损耗。
+
+  ```javascript
+  const Chain = function(fn) {
+    this.fn = fn;
+    this.successor = null;
+  }
+  
+  Chain.prototype.setNextSuccessor = function(successor) {
+    return this.successor = successor;
+  }
+  
+  Chain.prototype.passRequest = function() {
+    const ret = this.fn.apply(this, arguments);
+    if (ret === 'nextSuccessor') {
+      return this.successor && this.successor.passRequest.apply(this.successor, arguments);
+    }
+    return ret;
+  }
+  
+  // 异步
+  Chain.prototype.next = function() {
+    return this.successor && this.successor.passRequest.apply(this.successor, arguments);
+  }
+  
+  const fn1 = new Chain(function() {
+    console.log(1);
+    return 'nextSuccessor';
+  });
+  
+  const fn2 = new Chain(function() {
+    console.log(2);
+    const self = this;
+    setTimeout(function() {
+      self.next();
+    }, 1000);
+  });
+  
+  const fn3 = new Chain(function() {
+    console.log(3);
+  });
+  
+  fn1.setNextSuccessor(fn2).setNextSuccessor(fn3);
+  fn1.passRequest();
+  ```
+
+- 用AOP实现
+
+  ```javascript
+  Function.prototype.after = function(fn) {
+    const self = this;
+    return function() {
+      const ret = self.apply(this, arguments);
+      if (ret === 'nextSuccessor') {
+        return fn.apply(this, arguments);
+      }
+      return ret;
+    }
+  }
+  ```
+
+  
+
 ### 中介者模式
 
 ### 装饰者模式
