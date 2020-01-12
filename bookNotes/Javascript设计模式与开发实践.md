@@ -1163,6 +1163,111 @@ miniConsole = {
 
 ### 中介者模式
 
+- 作用：解除对象与对象之间的紧耦合关系。增加一个中介者对象后，所有的相关对象都通过中介者对象来通信，而不是互相引用，所以当一个对象发生改变时，只需要通知中介者对象即可。中介者使对象之间耦合松散，而且可以独立地改变它们之间地交互。
+
+- 是迎合迪米特法则的一种实现。迪米特法则也叫最少知识原则，是指一个对象应尽可能少的了解另外的对象。
+
+- 优点：使对象之间得以解耦，以中介者和对象之间的一对多关系取代了对象之间的网状多对多关系。各个对象只需关注自身功能的实现，对象之间的交互关系交给了中介者对象来实现和维护。
+
+- 缺点：系统中会新增一个中介者对象，因为对象之间交互的复杂性，转移成了中介者对象的复杂性，使得中介者对象经常是巨大的，难以维护。
+
+  ```javascript
+  function Player(name, teamColor) {
+    this.name = name;
+    this.teamColor = teamColor;
+    this.state = 'alive';
+  }
+  
+  Player.prototype.win = function() {
+    console.log(this.name + ' won');
+  }
+  
+  Player.prototype.lose = function() {
+    console.log(this.name + ' lost');
+  }
+  
+  Player.prototype.die = function() {
+    this.state = 'dead';
+    playerDirector.ReceiveMessage('playerDead', this);
+  }
+  
+  Player.prototype.remove = function() {
+    playerDirector.ReceiveMessage('removePlayer', this);
+  }
+  
+  Player.prototype.changeTeam = function(color) {
+    playerDirector.ReceiveMessage('changeTeam', this, color);
+  }
+  
+  const playerFactory = function(name, teamColor) {
+    const newPlayer = new Player(name, teamColor);
+    playerDirector.ReceiveMessage('addPlayer', newPlayer);
+  }
+  
+  const playerDirector = (function() {
+    const players = {}, operations = {};
+  
+    operations.addPlayer = function(player) {
+      const teamColor = player.teamColor;
+      players[teamColor] = players[teamColor] || [];
+      players[teamColor].push(player);
+    }
+  
+    operations.removePlayer = function(player) {
+      const teamColor = player.teamColor;
+      const teamPlayers = players[teamColor] || [];
+      for (let i = teamPlayers.length - 1; i >= 0; i--) {
+        if (teamPlayers[i] === player) {
+          teamPlayers.splice(i, 1);
+        }
+      }
+    }
+  
+    operations.changeTeam = function(player, newTeamColor) {
+      operations.removePlayer(player);
+      player.teamColor = newTeamColor;
+      operations.addPlayer(player);
+    }
+  
+    operations.playerDead = function(player) {
+      const teamColor = player.teamColor;
+      const teamPlayers = players[teamColor];
+      let all_dead = true;
+      for (let i = 0, player; player = teamPlayers[i++];) {
+        if (player.state !== 'dead') {
+          all_dead = false;
+          break;
+        }
+      }
+  
+      if (all_dead === true) {
+        for (let i = 0, player; player = teamPlayers[i++];) {
+          player.lose();
+        }
+        for (let color in players) {
+          if (color !== teamColor) {
+            const teamPlayers = players[color];
+            for (let i = 0, player; player = teamPlayers[i++];) {
+              player.win();
+            }
+          }
+        }
+      }
+    }
+  
+    const ReceiveMessage = function() {
+      const message = Array.prototype.shift.call(arguments);
+      operations[message].apply(this, arguments);
+    }
+  
+    return {
+      ReceiveMessage,
+    }
+  })();
+  ```
+
+  
+
 ### 装饰者模式
 
 ### 状态模式
