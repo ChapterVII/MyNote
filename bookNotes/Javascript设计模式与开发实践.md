@@ -1270,6 +1270,85 @@ miniConsole = {
 
 ### 装饰者模式
 
+- 可以动态地某个对象添加一些额外地职责，而不会影响从这个类中派生的其他对象；
+- 比“继承”更加灵活，是一种即用即付的方式。
+- 用AOP装饰函数
+
+```javascript
+// example1
+Function.prototype.after = function(afterfn) {
+  const _self = this;
+  return function() {
+    const ret = _self.apply(this, arguments);
+    afterfn.apply(this, arguments);
+    return ret;
+  }
+}
+
+const showLogin = function() {
+  console.log('打开登录浮层');
+}
+
+const log = function() {
+  console.log('上报标签为： ' + this.getAttribute('tag'));
+}
+
+showLogin = showLogin.after(log);
+
+document.getElementById('button').onclick = showLogin;
+
+// example2
+Function.prototype.before = function(beforefn) {
+  const _self = this;
+  return function() {
+    if (beforefn.apply(this, arguments) === false) {
+      return;
+    }
+    return _self.apply(this, arguments);
+  }
+}
+
+const ajax = function(type, url, param) {
+  console.log(param);
+}
+
+const getToken = function() {
+  return 'Token';
+}
+
+ajax = ajax.before(function(type, url, param) {
+  param.Token = getToken();
+});
+
+const validata = function() {
+  if (username.value === '') {
+    alert('用户名不能为空');
+    return false;
+  }
+  if (password.value === '') {
+    alert('密码不能为空');
+    return false;
+  }
+}
+
+const formSubmit = function() {
+  const param = {
+    username: userName.value,
+    password: password.value,
+  };
+  ajax('post', 'http://xxx.com/login', param);
+}
+
+formSubmit = formSubmit.before(validata);
+
+submitBtn.onclick = function() {
+  formSubmit();
+}
+
+```
+
+
+
 ### 状态模式
 
 ### 适配器模式
