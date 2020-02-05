@@ -64,7 +64,7 @@ Node对引入过的模块都会进行缓存，以减少二次引入的开销，�
 
 - Node与浏览器的对比
 
-  ![1580810361480](C:\Users\zhangqi\AppData\Roaming\Typora\typora-user-images\1580810361480.png)
+  ![Chrome VS Node](https://github.com/GrowLegend/MyNote/blob/master/static/images/Chrome%20VS%20Node.png)
 
   - 浏览器中除了V8作为JavaScript引擎外还有一个WebKit布局引擎。HTML5在发展过程中定义了更多更丰富的API。在实现上，浏览器提供了越来越多的功能暴露给Javascript和HTML标签。但对于前端浏览器的发展现状而言，HTML5标准统一的过长是相对缓慢的。Javascript作为一门图灵完备的语言，长久以来却限制在浏览器的沙箱中运行，它的能力取决于浏览器中间层提供的支持有多少。
   - 除了HTML、webKit和显卡这些UI相关技术没有支持外，Node与Chrome十分相似。都是基于事件驱动的异步架构，浏览器通过事件驱动来服务界面上的交互，Node通过事件驱动来服务I/O。Node打破了过去JavaScript只能在浏览器中运行的局面。前后端编程环境统一，可以大大降低前后端转换所需要的上下文交换代价。
