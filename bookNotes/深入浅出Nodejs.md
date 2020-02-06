@@ -91,7 +91,7 @@ Node对引入过的模块都会进行缓存，以减少二次引入的开销，�
 
 - 跨平台：兼容Windows和*nix平台主要得益于Node在架构层面的改动，在操作系统与Node上层模块系统之间构建了一层平台层架构，即libuv。libuv已成为许多系统实现跨平台的基础组件。通过良好的架构，Node的第三方C++模块也可以借助libuv实现跨平台。
 
-  ![1580872115330](C:\Users\zhangqi\AppData\Roaming\Typora\typora-user-images\1580872115330.png)
+  ![Node跨平台](https://github.com/GrowLegend/MyNote/blob/master/static/images/Node跨平台.png)
 
 ### Node的应用场景
 
