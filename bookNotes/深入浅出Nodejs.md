@@ -187,6 +187,43 @@
 
 ### 核心模块
 
+分为C/C++编写的和JavaScript编写的两部分，其中C/C++文件存放在Node项目的src目录下，JavaScript文件存放在lib目录下。
+
+1. JavaScript核心模块的编译过程：在编译所有C/C++文件之前，编译程序需要将所有的JavaScript模块文件编译为C/C++代码。
+
+   1. 转存为C/C++代码：Node采用了V8附带的js2c.py工具，将所有内置的JavaScript代码（src/node.js和lib/*.js）转换成C++里的数组，生成node_natives.h头文件。在这个过程中，JavaScript代码以字符串的形式存储在node命名空间中，是不可直接执行的。在启动Node进程时，JavaScript代码直接加载进内存中。在加载过程中，JavaScript核心模块经历标识符分析后直接定位到内存中，比普通的文件模块从磁盘中一处一处查找要快很多。
+
+   2. 编译JavaScript核心模块：与文件模块有区别的地方在于获取源代码的方式（核心模块是从内存中加载的）以及缓存执行结果的位置。源文件通过process.binding('natives')取出，编译成功的模块缓存到NativeModule._cache对象上。
+
+      ```javascript
+      function NativeModule(id) {
+      	this.filename = id + '.js';
+          this.id = id;
+          this.exports = {};
+          this.loaded = false;
+      }
+      NativeModule._source = process.binding('natives');
+      NativeModule._cache = {};
+      ```
+
+2. C/C++核心模块的编译过程
+
+   核心模块有些全部由C/C++编写，有些则由C/C++完成核心部分，其他部分由JavaScript实现包装或向外导出，以满足性能需求。C++模块主内完成核心，JavaScript主外实现封装的模式是Node能够提高性能的常见方式，可以在开发速度和性能之间找到平衡点。由C/C++编写的部分统一成为内建模块，通常不被用户直接调用，如buffer、crypto、evals、fs、os等模块。
+
+   - 内建模块的组织形式：每一个内建模块在定义之后，都通过NODE_MODULE宏将模块定义到node命名空间中，模块的具体初始化方法挂载为结构的register_func成员。node_extension.h文件将这些散列的内建模块（node_buffer、node_crypto、node_evals、node_fs、node_http_parser、node_os、node_zlib、node_timer_wrap、node_tcp_wrap、node_udp_wrap、node_pipe_wrap、node_cares_wrap、node_tty_wrap、node_process_wrap、node_fs_event_wrap、node_signal_watcher）统一放进了一个叫node_module_list的数组中。
+
+   - 内建模块的导出：
+
+     Node所有模块类型中存在一种依赖层级关系：文件模块可能依赖核心模块，核心模块可能会依赖内建模块。
+
+     不推荐文件模块直接调用内建模块，如需调用，直接调用核心模块即可。
+
+     Node在启动时会生成一个全局变量process，并提供Binding()方法来协助加载内建模块：先创建一个exports空对象，然后调用get_builtin_module方法取出内建模块对象，通过执行register_func填充exports对象，最后将exports对象按模块名缓存，并返回给调用方完成导出。
+
+3. 核心模块的引入流程
+
+4. 编写核心模块：编写内建模块分为：编写头文件和编写C/C++文件。
+
 ### C++扩展模块
 
 ### 模块调用栈
