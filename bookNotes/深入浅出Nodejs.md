@@ -1,15 +1,5 @@
 # 深入浅出Nodejs
 
-CommonJS模块规范：
-
-模块引用： var math = require('math') require方法接受模块标识，以此引入一个模块的API到上下文中。
-
-模块定义：在node中一个文件就是一个模块，模块中，存在一个module对象，代表模块自身，module的属性exports用于到处当前模块的方法或变量，是唯一导出的出口。
-
-模块标识：传递给require()方法的参数，必须是符合小驼峰命名的字符串，或者路径
-
-
-
 Node的模块实现：
 
 模块分类：
@@ -118,6 +108,47 @@ Node对引入过的模块都会进行缓存，以减少二次引入的开销，�
 ## 模块机制
 
 ### CommonJS规范
+
+- 愿景：希望JavaScript能在任何地方运行。
+
+- 主要是为了弥补当前JavaScript没有标准的缺陷：
+
+  - 没有模块系统。
+  - 标准库较少：ECMAScript仅定义了部分核心库，对于文件系统、I/O流等常见需求却没有标准的API。
+  - 没有标准接口：JavaScript几乎没有定义过如Web服务器或数据库之类的标准统一接口。
+  - 缺乏包管理系统：导致JavaScript应用中基本没有自动加载和安装依赖的能力。
+
+  以达到像Python、Ruby、Java具备开发大型应用的基础能力，而不是停留在小脚本程序的阶段。期望用CommonJS API写出的应用可以具备跨宿主环境执行的能力，不仅可以利用JavaScript开发富客户端应用，还可以编写以下应用。
+
+  - 服务器端JavaScript应用程序。
+  - 命令行工具。
+  - 桌面图形界面应用程序。
+  - 混合应用。
+
+- CommonJS规范涵盖了模块、二进制、Buffer、字符集编码、I/O流、进程环境、文件系统、套接字、单元测试、Web服务器网关接口、包管理等。
+
+- Node能以一种熟悉的姿态出现，离不开CommonJS规范的影响；CommonJS能以一种寻常的姿态写进各个公司的项目代码中，离不开Node优异的表现
+
+  ![Node和CommonJS关系](https://github.com/GrowLegend/MyNote/blob/master/static/images/Node和CommonJS关系.png)
+
+- CommonJS的模块规范
+
+  1. 模块引用：require()方法
+  2. 模块定义：对应引入的功能，上下文提供了exports对象用于导出当前模块的方法或者变量，是唯一导出的出口。模块中还存在一个module对象，代表模块自身，而exports是module的属性。Node中一个文件就是一个模块。
+  3. 模块标识：传递给require()方法的参数，必须是符合小驼峰命名的字符串，或路径，可以没有文件名后缀.js。
+
+  ```javascript
+  // math.js
+  exports.add = function() {}
+  
+  // program.js
+  var math = require('math');
+  exports.increment = function(val) {
+      return math.add(val, 1);
+  }
+  ```
+
+  模块的意义：将类聚的方法和变量等限定在私有的作用域中，同时支持引入和导出共嗯那个以顺畅地连接上下游依赖。
 
 ### Node的模块实现
 
