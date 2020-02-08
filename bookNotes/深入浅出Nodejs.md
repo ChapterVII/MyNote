@@ -226,6 +226,27 @@
 
 ### C++扩展模块
 
+- JavaScript的一个典型弱点：位运算。参照Java的位运算实现，但是Java位运算是在int型数字的基础上进行的，而JavaScript只有double型的数据类型，在进行位运算的过程中，需要将double型转换为int型，然后再进行。所以，在JavaScript层面上做位运算的效率不高。
+- 应用中会频繁出现位运算的需求，包括转码、编码等过程，如果通过JavaScript来实现，CPU资源将会耗费很多，可以编写C/C++扩展模块来提升性能。
+- Node原生模块一定程度上可以跨平台的前提条件是源代码可以支持在*nix和Windows上编译，其中 *nix下通过g++/gcc等编译器编译为动态链接共享对象文件（.so），在Windows下则需要通过Visual C++的编译器编译为动态链接库文件（.dll）。.node的扩展名只是为了看起来自然一点，不会因为平台差异产生不同的感觉。实际上，在Windows下是一个.dll文件，在 *nix下则是一个.so文件。为了实现跨平台，dlopen方法在内部实现时区分了平台，分别用的是加载.so和.dll的方式。
+- 一个平台下的.node文件在另一个平台下是无法加载执行的，必须重新用各自平台下的编译器编译为正确的.node文件。
+
+1. 前提条件：深厚的C/C++编程功底
+
+   - GYP（Generate Your Projects）项目生成工具：可以减少编写跨平台项目文件的工作量，Node自身的源码就是通过GYP编译的。专有的扩展构建工具node-gyp。
+   - V8引擎C++库。
+   - libuv库：是跨平台的一层封装，通过它去调用一些底层操作高效的多。封装的功能包括事件循环、文件操作等。
+   - Node内部库。
+   - 其他库
+
+2. C/C++扩展模块的编写
+
+3. C/C++扩展模块的编译
+
+4. C/C++扩展模块的加载
+
+   ![require引入.node文件的过程](https://github.com/GrowLegend/MyNote/blob/master/static/images/require引入.node文件的过程.png)
+
 ### 模块调用栈
 
 ### 包与NPM
