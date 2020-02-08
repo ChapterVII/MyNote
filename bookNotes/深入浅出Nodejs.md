@@ -249,6 +249,17 @@
 
 ### 模块调用栈
 
+- C/C++内建模块属于最底层的模块，属于核心模块，主要提供API给JavaScript核心模块和第三方JavaScript文件模块调用。如果不是非常了解要调用的C/C++内建模块，尽量避免通过process.binding()方法直接调用。
+
+- JavaScript核心模块主要职责：
+
+  - 作为C/C++内建模块的封装层和桥接层，共文件模块调用；
+  - 纯粹的功能模块，不需要跟底层打交道
+
+- 文件模块通常由第三方编写，包括普通JavaScript模块和C/C++扩展模块，主要调用方向为普通JavaScript模块调用扩展模块。
+
+  ![模块之间的调用关系](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/模块之间的调用关系.png)
+
 ### 包与NPM
 
 ### 前后端共用模块
