@@ -262,6 +262,88 @@
 
 ### 包与NPM
 
+将模块联系起来的一种机制。
+
+1. 包结构：包实际上是一个存档文件，一个目录直接打包为.zip或tar.gz格式的文件，安装后解压还原为目录。应包含：
+
+   - package.json：包描述文件。
+   - bin：用于存放可执行二进制文件的目录。
+   - lib：用于存放JavaScript代码的目录。
+   - doc：用于存放文档的目录。
+   - test：用于存放单元测试用例的代码。
+
+2. 包描述文件与NPM：
+
+   CommonJS为package.json文件定义的必需的字段：
+
+   - name：包名
+
+     - 小写字母、数字组成，可以包括.、_、-，不允许出现空格
+     - 唯一，以免对外公布时重名冲突
+     - 建议不要附带上node或js来重复标识它是JavaScript或Node模块
+
+   - description：包简介。
+
+   - version：版本号。major.minor.revision格式。
+
+   - keywords：关键词数组，NPM中主要用来做分类搜索。
+
+   - maintainers：包维护者列表。由name、email、web三个属性组成，NPM通过该属性进行权限认证。
+
+   - contributors：贡献者列表。第一贡献应当是作者本人，格式与维护者列表相同。
+
+   - bugs：可以反馈bug的网页地址或邮件地址。
+
+   - licenses：所使用的许可证列表，表示包可以再哪些许可证下使用。格式：
+
+     ```json
+     "licenses": [{ "type": "GPLv2", "url": "http://www.example.com/licenses/gpl.html", }] 
+     ```
+
+   - repositories：托管源代码的位置列表，表明可以通过哪些方式和地址访问包的源代码。
+
+   - dependencies：包所需要依赖的包列表。NPM会通过这个属性帮助自动加载依赖的包。
+
+   - homepage：包的网站地址。
+
+   - os：操作系统支持列表，取值包括aix、freebsd、linux、macos、solaris、vxworks、windows。如果列表为空，则不对操作系统做任何假设。
+
+   - cpu：CPU架构的支持列表，有效的架构名称：arm、mips、ppc、sparc、x86、x86_64。如果列表为空，则不对CPU架构做任何假设。
+
+   - engine：支持的JavaScript引擎列表，有效的引擎取值包括：ejs、flusspferd、gpsee、jsc、spidermonkey、narwhal、node、v8。
+
+   - builtin：标志包是否是内建在底层系统的标准组件。
+
+   - directories：包目录说明。
+
+   - implements：实现规范的列表。标志包实现了CommonJS的那些规范。
+
+   - scripts：脚本说明对象。主要被包管理器用来安装、编译、测试和卸载包。
+
+   NPM实际需要的字段主要有name、version、description、keywords、repositories、author、bin、main、scripts、engines、dependencies、devDependencies。
+
+   - author：包作者。
+   - bin：配置后通过npm install package_name -g 命令将脚本添加到执行路径中，之后可以在命令行中直接执行。
+   - main：引入包时优先检查该字段并将其作为包中其余模块的入口。如不存在，会查找index文件。
+   - devDependencies：一些模块只在开发时需要依赖。
+
+3. NPM常用功能
+
+   - 安装依赖包
+     - 全局模式安装：-g是将一个包安装为全局可用的可执行命令。根据包描述文件中的bin字段配置，将实际脚本链接到与Node可执行文件相同的路径下。
+     - 从本地安装：对于没有发布到NPM上的或因网络原因无法直接安装的包，可以下载到本地安装。只需为NPM指明package.json文件所在的位置，可以是一个包含package.json的存档文件/URL地址/一个目录下有package.json文件的目录位置。
+     - 从非官方源安装：执行命令时添加 --registry=http://registry.url 即可。
+   - 钩子命令：preinstall
+   - 发布包：
+     - 注册包仓库账户：npm adduser
+     - 上传包：npm publish
+     - 管理包权限：npm owner
+   - 分析包：npm ls
+
+4. 局域NPM：企业搭建自己的NPM仓库。
+
+5. NPM潜在问题：包质量和安全问题。
+
 ### 前后端共用模块
 
 ### 总结
