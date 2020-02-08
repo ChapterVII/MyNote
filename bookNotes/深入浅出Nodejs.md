@@ -12,7 +12,7 @@
 
 - Node与浏览器的对比
 
-  ![Chrome VS Node](https://github.com/GrowLegend/MyNote/blob/master/static/images/Chrome%20VS%20Node.png)
+  ![Chrome VS Node](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/Chrome%20VS%20Node.png)
 
   - 浏览器中除了V8作为JavaScript引擎外还有一个WebKit布局引擎。HTML5在发展过程中定义了更多更丰富的API。在实现上，浏览器提供了越来越多的功能暴露给Javascript和HTML标签。但对于前端浏览器的发展现状而言，HTML5标准统一的过长是相对缓慢的。Javascript作为一门图灵完备的语言，长久以来却限制在浏览器的沙箱中运行，它的能力取决于浏览器中间层提供的支持有多少。
   - 除了HTML、webKit和显卡这些UI相关技术没有支持外，Node与Chrome十分相似。都是基于事件驱动的异步架构，浏览器通过事件驱动来服务界面上的交互，Node通过事件驱动来服务I/O。Node打破了过去JavaScript只能在浏览器中运行的局面。前后端编程环境统一，可以大大降低前后端转换所需要的上下文交换代价。
@@ -39,7 +39,7 @@
 
 - 跨平台：兼容Windows和*nix平台主要得益于Node在架构层面的改动，在操作系统与Node上层模块系统之间构建了一层平台层架构，即libuv。libuv已成为许多系统实现跨平台的基础组件。通过良好的架构，Node的第三方C++模块也可以借助libuv实现跨平台。
 
-  ![Node跨平台](https://github.com/GrowLegend/MyNote/blob/master/static/images/Node跨平台.png)
+  ![Node跨平台](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/Node跨平台.png)
 
 ### Node的应用场景
 
@@ -87,7 +87,7 @@
 
 - Node能以一种熟悉的姿态出现，离不开CommonJS规范的影响；CommonJS能以一种寻常的姿态写进各个公司的项目代码中，离不开Node优异的表现
 
-  ![Node和CommonJS关系](https://github.com/GrowLegend/MyNote/blob/master/static/images/Node和CommonJS关系.png)
+  ![Node和CommonJS关系](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/Node和CommonJS关系.png)
 
 - CommonJS的模块规范
 
@@ -141,7 +141,7 @@
 
      - 目录分析和包
 
-       ![Node目录分析和包](https://github.com/GrowLegend/MyNote/blob/master/static/images/Node目录分析和包.png)
+       ![Node目录分析和包](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/Node目录分析和包.png)
 
 - 模块编译
 
@@ -245,7 +245,7 @@
 
 4. C/C++扩展模块的加载
 
-   ![require引入.node文件的过程](https://github.com/GrowLegend/MyNote/blob/master/static/images/require引入.node文件的过程.png)
+   ![require引入.node文件的过程](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/require引入.node文件的过程.png)
 
 ### 模块调用栈
 
