@@ -397,6 +397,45 @@
 
 ### 非I/O的异步API
 
+1. 定时器：调用setTimeout()或者setInterval()创建的定时器会被插入到定时器观察者内部的一个红黑树中。每次Tick执行时，会从该红黑树中迭代取出定时器对象，检查是否超过定时时间，如果超过，就形成一个事件，它的回调函数将立即执行。问题：并非精确的（在容忍范围内）。
+
+2. process.nextTick()：每次调用时，只会将回调函数放入队列中，在下一轮Tick时取出执行。定时器中采用红黑树的操作时间复杂度为O(lg(n))，nextTick()的时间复杂度为O(1)。相较之下，更高效。
+
+3. setImmediate()：
+
+   - 与process.nextTick()十分相似，都是将回调函数延迟执行。
+
+   - process.nextTick()中的回调函数执行的优先级要高于setImmediate()。原因是事件循环对观察者的检查是有先后顺序的，process.nextTick()属于idle观察者，setImmediate()属于check观察者。在每一轮循环检查中，idle观察者先于I/O观察者，I/O观察者先于check观察者。
+   - 具体实现上，process.nextTick()的回调函数保存在一个数组中，setImmediate()的结果则是保存在链表中。
+   - 在行为上，process.nextTick()在每轮循环中会将数组中的回调函数全部执行完，而setImmediate()在每轮循环中执行链表中的一个回调函数。
+
+   ```javascript
+   process.nextTick(function() {
+      console.log('nextTick延迟执行1'); 
+   });
+   process.nextTick(function() {
+      console.log('nextTick延迟执行2'); 
+   });
+   setImmediate(function() {
+      console.log('setImmediate延迟执行1');
+      process.nextTick(function() {
+          console.log('强势插入'); 
+      });
+   });
+   setImmediate(function() {
+      console.log('setImmediate延迟执行2');
+   });
+   console.log('正常执行');
+   
+   // result
+   正常执行
+   nextTick延迟执行1
+   nextTick延迟执行2
+   setImmediate延迟执行1
+   强势插入
+   setImmediate延迟执行2
+   ```
+
 ### 事件驱动与高性能服务器
 
 ### 总结
