@@ -803,13 +803,59 @@ Node提供stream模块用于处理大文件。
 
 ### 构建TCP服务
 
+1. TCP：传输控制协议，在OSI模型中属于传输层协议。许多应用层协议基于TCP构建，典型的是HTTP、SMTP、IMAP等
+
+   ![OSI模型（七层协议）](https://github.com/GrowLegend/MyNote/blob/master/static/images/深入浅出Nodejs/OSI模型（七层协议）.png)
+
+   TCP是面向连接的协议，显著的特征是在传输之前需要3次握手形成会话。
+
+2. 创建TCP服务器端：net.createServer(listener)，listener是连接事件connection的侦听器。
+
+3. TCP服务的事件
+
+   - 服务器事件
+     - listening：server.listen(port, listeningListener)时触发
+     - connection：每个客户端套接字连接到服务器端时触发，net.createServer()
+     - close：服务器关闭时触发，调用server.close()后，服务器将停止接收新的套接字连接，但保持当前存在的连接，等待所有连接都断开后，会触发该事件。
+     - error：服务器发生异常时触发。
+   - 连接事件
+     - data：当一端调用write()发送数据时，另一端会触发data事件。
+     - end：连接中的任意一端发送了FIN数据时触发。
+     - connect：用于客户端，当套接字与服务器端连接成功时触发。
+     - drain：任意一端调用write()发送数据时，当前这端会触发该事件。
+     - error：异常发生时触发。
+     - close：套接字完全关闭时触发。
+     - timeout：当一定时间后连接不再活跃时，该事件将会被触发，通知用户当前连接已经被闲置了。
+
+   TCP针对网络中的小数据包有一定的优化策略：Nagle算法。如果每次只发送一个字节的内容而不优化，网络中将充满只有极少数有效数据的数据包，浪费网络资源。Nagle算法针对这种情况，要求缓冲区的数据达到一定数量或一定时间后将其发出，小数据包将被Nagle算法合并来优化网络。
+
+   Node中TCP默认启用了Nagle算法，可以调用socket.setNoDelay(true)去掉Nagle算法，使得write()可以立即发送数据到网络中。
+
+   注意：尽管网络的一端调用write()会触发另一端的data事件，但是并不是每次write()都会触发一次data事件，在关闭掉Nagle算法后，另一端可能会将接收到的多个小数据包合并，然后只触发一次data事件。
+
 ### 构建UDP服务
+
+1. 创建UDP套接字
+2. 创建UDP服务器端
+3. 创建UDP客户端
+4. UDP套接字事件
 
 ### 构建HTTP服务
 
+1. HTTP
+2. http模块
+3. HTTP客户端
+
 ### 构建WebSocket服务
 
+1. WebSocket握手
+2. WebSocket数据传输
+
 ### 网络服务与安全
+
+1. TLS/SSL
+2. TLS服务
+3. HTTPS服务
 
 ### 总结
 
