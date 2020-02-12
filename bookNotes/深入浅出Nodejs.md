@@ -668,15 +668,136 @@ Node提供stream模块用于处理大文件。
 
 ### Buffer结构
 
+主要用于操作字节
+
+1. 模块结构
+
+   是一个典型的JavaScript与C++结合的模块，将性能相关部分用C++实现，将非性能相关的部分用JavaScript实现。
+
+2. Buffer对象
+
+   - 类似于数组，元素为16进制的两位数，即0到255的数值。
+   - 不同编码的字符串占用的元素个数各不相同。
+   - 可以访问length属性得到长度，也可以通过下标访问元素。通过下标访问刚初始化的Buffer的元素，元素值是一个0到255的随机值。
+   - 通过下标给元素赋值不是0到255的整数时：
+     - 小于0：将该值逐次加256，直到得到一个0到255的整数。
+     - 大于255：逐次减256，直到得到0~255的数值。
+     - 小数：舍弃小数部分，只保留整数部分。
+
+   ```javascript
+   var buf = new Buffer(100);
+   console.log(buf.length); // 100
+   console.log(buf[10]); // 0~255的随机值
+   buf[10] = 100;
+   console.log(buf[10]); // 100
+   buf[20] = -100;
+   console.log(buf[20]);  // 156
+   buf[21] = 300;
+   console.log(buf[21]); // 44
+   buf[22] = 3.1415;
+   console.log(buf[22]); // 3
+   ```
+
+3. Buffer内存分配
+
+   - 在C++层面申请内存，在JavaScript中分配内存。
+
+   - Node采用slab分配机制：动态内存管理机制，简而言之slab就是一块申请好的固定大小的内存区域。有如下3中状态：
+     - full：完全分配状态。
+     - partial：部分分配状态。
+     - empty：没有被分配状态。
+
+   - Node以8KB为界限为区分Buffer是大对象还是小对象：Buffer.poolSize = 8 * 1024; 8KB就是每个slab的大小值，在JavaScript层面，以它作为单位单元进行内存的分配。
+
+   1. 分配小Buffer对象
+
+      指定Buffer的大小少于8KB。
+
+      ```javascript
+      // Buffer分配过程中主要使用一个局部变量pool作为中间处理对象，储于分配状态的slab单元都指向它。
+      var pool;
+      function allocPool() {
+          pool = new SlowBuffer(Buffer.poolSize);
+          pool.used = 0;
+      }
+      // slab储于empty状态
+      // 构造小Buffer对象时new Buffer(1024)时回去检查pool对象
+      if (!pool || pool.length - pool.used < this.length) allocPool();
+      // 当前Buffer对象的parent属性指向该slab，并记录下是从这个slab的哪个位置offset开始使用的，slab对象自身也记录被使用了多少字节
+      this.parent = pool;
+      this.offset = pool.used;
+      pool.used += this.length;
+      if (pool.used & 7) pool.used = (pool.used + 8) & ~7;
+      // slab状态为partial
+      // 再次创建一个Buffer对象时，构造过程中将会判断这个slab剩余空间是否足够，如果足够，使用剩余空间，并更新slab的分配状态，如果不够，将会构造新的slab，原slab生于的空间会造成浪费。
+      ```
+
+      由于同一个slab可能分配给多个Buffer对象使用，只有这些小Buffer对象在作用域释放并都可以回收时，slab的8KB空间才会被回收。
+
+   2. 分配大Buffer对象
+
+      如果超过8KB的Buffer对象，将会直接分配一个SlowBuffer对象作为slab单元，这个slab单元将会被这个大Buffer对象独占。
+
+      ```javascript
+      this.parent = new SlowBuffer(this.length);
+      this.offset = 0;
+      ```
+
+   上面的Buffer对象都是JavaScript层面的，能够被V8的垃圾回收标记回收。但其内部的parent属性指向的SlowBuffer对象却来自于Node自身C++中的定义，是C++层面上的Buffer对象，所用内存不在V8的堆中。
+
 ### Buffer的转换
+
+目前支持的字符串编码类型：ASCII、UTF-8、UTF-16LE/UCS-2、Base64、Binary、Hex
+
+1. 字符串转Buffer：
+
+   - new Buffer(str, [encoding]); encoding参数不传则默认按UTF-8编码进行转码和存储。
+
+   - 一个Buffer对象可以存储不同编码类型的字符串转码的值：
+
+     buf.write(string, [offset], [length], [encoding]);
+
+2. Buffer转字符串：buf.toString([encoding], [start], [end]);
+
+3. Buffer不支持的编码类型
+
+   - 判断编码是否支持转换：Buffer.isEncoding(encoding)
+   - 在中国常用的GBK、GB2312和BIG-5编码都不在支持的行列中。
+   - 对于不支持的编码类型，可以借助Node生态圈中的模块完成转换：iconv和iconv-lite
 
 ### Buffer的拼接
 
+1. 乱码是如何产生的：
+
+   - Buffer在使用场景中，通常是以一段一段的方式传输。
+
+   - data += chunk; 这句代码里隐藏了toString()操作，等价于
+
+     data = data.toString() + chunk.toString(); 
+     对于宽字节的中文会形成问题。
+
+   - 对于任意长度的Buffer而言，宽字节字符串都有可能存在被截断的情况，只不过Buffer的长度越大出现的概率越低而已，但问题依然不可忽视。
+
+2. setEncoding()与string_decoder()
+
+   - readable.setEncoding(encoding)：让data事件中传递的不再是一个Buffer对象，而是编码后的字符串。
+   - 调用setEncoding()时，可读流对象在内部设置了一个decoder对象。每次data事件都通过该decoder对象进行Buffer到字符串的解码，然后传递给调用者。
+   - decoder对象来自于string_decoder模块StringDecoder的实例对象。
+   - string_decoder并非万能药，目前只能处理UTF-8、Base64和UCS-2/UTF-16LE这3种编码。所以通过setEncoding()的方式能解决大部分的乱码问题，但不能从根本上解决该问题。
+
+3. 正确拼接Buffer：用一个数组来存储接收到的所有Buffer片段并记录下所有片段的总长度，然后调用Buffer.concat()方法生成一个合并的Buffer对象。
+
 ### Buffer与性能
 
-### 总结
+- 通过预先转换静态内容为Buffer对象，可以有效地减少CPU的重复使用，节省服务器资源。
 
-### 参考资源
+- 文件读取：highWaterMark设置对性能的影响至关重要。
+  - highWaterMark设置对Buffer内存的分配和使用有一定影响。
+  - highWaterMark设置过小，可能导致系统调用次数过多。
+
+- 对于大文件而言，highWaterMark的大小决定会触发系统调用和data事件的次数。
+
+- 读取一个相同的大文件时，highWaterMark值越大，读取速度越快。
 
 ## 网络编程
 
