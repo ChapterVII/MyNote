@@ -852,8 +852,34 @@ Node提供stream模块用于处理大文件。
 ### 构建HTTP服务
 
 1. HTTP
+
+   1. 构建在TCP之上，属于应用层协议
+   2. 报文信息：第一部分为经典的TCP的3次握手过程，第二部分是在完成握手之后，客户端向服务器端发送请求报文，第三部分是服务端完成处理后向客户端发送响应内容，包括响应头和响应体。最后部分是结束会话的信息。
+   3. 基于请求响应式的，以一问一答的方式实现服务，虽然基于TCP会话，但本身并无会话的特点。
+   4. 从协议的角度，浏览器其实是一个HTTP的代理，用户的行为将会通过它转化为HTTP请求报文发送给服务器端，服务器端处理请求后，发送响应报文给代理，代理在解析报文后，将用户需要的内容呈现在界面上。
+
 2. http模块
-3. HTTP客户端
+
+   1. Node的http模块包含对HTTP处理的封装。HTTP服务与TCP服务模型区别在于，在开启keepalive后，一个TCP会话可以用于多次请求和响应。TCP服务以connection为单位进行服务，HTTP服务以request为单位进行服务。http模块即是将connection到request的过程进行了封装。
+
+   2. http模块将连接所有套接字的读写抽象为ServerRequest和ServerResponse对象，分别对应请求和响应操作。在请求产生的过程中，http模块拿到连接中传来的数据，调用二进制模块http_parser进行解析，在解析完请求报文的报头后，触发request事件，调用用户的业务逻辑。
+
+   3. HTTP请求：对于TCP连接的读操作，http模块将其封装为ServerRequest对象。报文头部将会通过http_parser进行解析，报文头第一行GET / HTTP/1.1被解析后分解为req.method、req.url、req.httpVersion属性，其余报头是很规律的key: value格式，被解析后放置在req.headers属性上传递给业务逻辑以供调用。报文体部分则抽象为一个只读流对象，如果业务逻辑需要读取报文体中的数据，则要在这个数据流结束后才能进行操作。
+
+   4. HTTP响应：封装了对底层连接的写操作，可以看成一个可写的流对象。影响响应报文头部信息的API为res.setHeader()和res.writeHead()。可以调用setHeader进行多次设置，但只有writeHead后，报文才会写入到连接中。此外，http模块会自动帮助设置一些头信息（Date、Connection、Transfer-Encoding）。报文体部分则是调用res.write()和res.end()方法实现，区别是end会先调用write发送数据，然后发送信号告知服务器这次响应结束。响应结束后，HTTP服务器可能会将当前的连接用于下一个请求，或者关闭连接。
+
+      注意：
+
+      - 报头是在报文体发送前发送的，一旦开始了数据的发送，writeHead和setHeader将不再生效，由协议的特性决定。
+      - 无论服务器端在处理业务逻辑时是否发生异常，无比在结束时调用res.end()结束请求，否则客户端将一直储于等待的状态。也可以通过延迟res.end()的方式实现客户端与服务器端之间的长连接，但结束时务必关闭连接。
+
+   5. 事件：connection、request、close、checkContinue、connect、upgrade、clientError
+
+3. HTTP客户端：底层API：http.request(options, connect)
+
+   1. ClientRequest在解应时，一解应就触发response事，时一 个应对以作ClientResponse
+   2. ClientRequest对也是于TCP实现的，在 keepalive的情下，一个底层会话连接可以多次用于请求。为了重用TCP连接，http模块包含一 个默认的客户端对象http.globalAgent。它对每个服务器端（host + port）创建的连接进行了管理，默认情况下，通过ClientRequest对象对同一个服务端发起的HTTP请求最多可以创5个连接。它的实质是一个连接池。调用HTTP客户端同时对一个服务发起10次HTTP请求时，实质只有5个请求处于并发状态 ，后续的请求需要等待某个请求完成服务后才发出。这与浏览器对同一个域名有下载连接数的限制是相同的行为。一旦请求量过大，连接限制会限制服务性能。如需要改变，可以在options中传递agent选项。默认情况下，请求会采用全局的代理对象，默认连接数限制的为5。 Agent对象的sockets和requests属性分别表示当前连接池中使用中的连接数和处于等待状态的请求数，在业务中监视这两个值有助于发现业务状态的繁忙程度。 
+   3. 事件：response、socket、connect、upgrade、continue
 
 ### 构建WebSocket服务
 
