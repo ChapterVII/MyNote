@@ -883,8 +883,49 @@ Node提供stream模块用于处理大文件。
 
 ### 构建WebSocket服务
 
+​	好处：网页客户端只需一个TCP连接即可完成双向通信，在服务器端与客户端频繁通信时，无须频繁断开连接和重发请求。相比HTTP，更接近于传输层协议，并没有在HTTP基础上模拟服务器端的推送，而是在TCP上定义独立的协议。WebSocket的握手部分是由HTTP完成的。
+
 1. WebSocket握手
+
+   客户端建立连接时通过HTTP发起请求报文如下：
+
+   ```javascript
+   GET /chat HTTP/1.1
+   Host: server.example.com
+   // Upgrade,Connection两个字段表示请求服务端升级协议为WebSocket。
+   Upgrade: websocket
+   Connection: Upgrade
+   // 用于安全校验。随机生成的Base64编码的字符串。服务器端收到后将其与字符串258EAFA5-E914-47DA-95CA-C5AB0DC85B11相连，行程字符串dGhlIHNhbXBsZSBub25jZQ==258EAFA5-E914-47DA-95CA-C5AB0DC85B11，然后通过sha1安全散列算法计算出结果后，再进行Base64编码返回客户端
+   Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+   // 指定子协议
+   Sec-WebSocket-Protocol: chat, superchat
+   // 指定版本号
+   Sec-WebSocket-Version: 13
+   
+   ```
+
+   服务端处理完请求后响应如下报文：
+
+   ```javascript
+   // 正在更换协议
+   HTTP/1.1 101 Switching Protocols
+   // 更新应用层协议为WebSocket协议，并在当前的套接字连接上应用新协议。
+   Upgrade: websocket
+   Connection: Upgrade
+   // 服务器端基于Sec-WebSocket-Key生成的字符串和选中的子协议
+   Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo= 
+   Sec-WebSocket-Protocol: chat
+   ```
+
+   客户端会校验Sec-WebSocket-Accept的值，如果成功，讲开始接下来的数据传输。
+
 2. WebSocket数据传输
+
+   握手顺利完成后，当前连接将不再进行HTTP的交互，而是开始WebSocket的数据帧协议，实现客户端与服务器端的数据交换。
+
+   握手完成后，客户端的onopen()将会被触发执行，服务器端没有onopen()方法可言。为了完成TCP套接字事件到WebSocket事件的封装，需要在接收数据时进行处理，WebSocket的数据帧协议即是在底层data事件上封装完成的。同样的数据发送时，也需要封装。
+
+   当调用send()发送一条数据时，协议可能将这个数据封装为一帧或多帧数据，然后逐帧发送。为了安全考虑，客户端需要对发送的数据帧进行掩码处理，服务器一旦受到无掩码帧，连接将关闭。而服务器发送到客户端的数据帧则无须做掩码处理，如果客户端收到带掩码的数据帧，连接也将关闭。
 
 ### 网络服务与安全
 
