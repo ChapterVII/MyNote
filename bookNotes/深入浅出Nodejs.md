@@ -1,3 +1,5 @@
+
+
 # 深入浅出Nodejs
 
 ## Node简介
@@ -1406,6 +1408,134 @@ app.put('/user/:username', authorize, updateUser);
    - 合理使用路由，避免不必要的中间件执行。
 
 ### 页面渲染
+
+1. 内容响应
+
+   服务器端响应的报文，最终都要被终端处理。可能是命令行终端，代码终端，也可能是浏览器。服务器端的响应从一定程度上决定或指示了客户端该如何处理响应的内容。
+
+   内容响应过程中，响应报头中的Content-*字段十分重要。
+
+   ```javascript
+   Content-Encoding: gzip // 内容是以gzip编码的
+   Content-Length: 21170 // 内容长度为21170个字节
+   Content-Type: text/javascript; charset=utf-8 // 内容类型为JavaScript，字符集为UTF-8
+   ```
+
+   客户端在接收到这个报文后，通过gzip来解码内容，用长度校验内容是否正确，再以字符集UTF-8将解码后的脚本插入到文档节点中。
+
+   - MIME
+
+     ```javascript
+     // 显示<html><body>Hello World</body></html>
+     res.writeHead(200, {'Content-Type': 'text/plain'});
+     res.end('<html><body>Hello World</body></html>\n');
+     
+     // 显示Hello World
+     res.writeHead(200, {'Content-Type': 'text/html'});
+     res.end('<html><body>Hello World</body></html>\n')
+     ```
+
+     浏览器对内容采用了不同处理方式，前者为纯文本，后者为HTML，并渲染了DOM树。
+
+     Content-Type的值简称为MIME值（全称Multipurpose Internet Mail Extensions），不同的文件类型具有不同的MIME值，如JSON文件为application/json，XML为application/xml，PDF为application/pdf。
+
+     mime模块可以判断文件类型。
+
+   - 附件下载
+
+     Content-Disposition字段影响的是客户端会根据它的值判断是应该将报文数据当作即时浏览的内容，还是可下载的附件。内容只需即时查看时值为inline，当数据可以存为附件时，值为attachment。另外，该字段还能通过参数指定保存时应该使用的文件名。
+
+     ```javascript
+     Content-Disposition: attachment; filename="filename.txt"
+     ```
+
+   - 响应JSON
+
+     ```javascript
+     res.json = function(json) {
+         res.setHeader('Content-Type', 'application/json');
+         res.writeHead(200);
+         res.end(JSON.stringify(json));
+     }
+     ```
+
+   - 响应跳转：当URL因为某些问题（如权限限制）不能处理当前请求，需将用户跳转到别的URL时。
+
+     ```javascript
+     res.redirect = function(url) {
+         res.setHeader('Location', url);
+         res.writeHead(302);
+         res.end('Redirect to ' + url);
+     }
+     ```
+
+2. 视图渲染：在动态页面技术中，最终的视图是由模板和数据共同生成出来的。
+
+3. 模板
+
+   形成模板技术的4个要素：
+
+   - 模板语言
+   - 包含模板语言的模板文件
+   - 拥有动态数据的数据对象
+   - 模板引擎
+
+   1. 模板引擎：过程：
+
+      - 语法分解：提出普通字符串和表达式，通常用正则表达式匹配出来。
+
+      - 处理表达式：将标签表达式转换成普通的语言表达式
+      - 生成待执行的语句
+      - 与数据一起执行，生成最终字符串。
+
+   2. with的应用
+
+      - 模板安全：XSS漏洞的产生大多跟模板有关。为了提高安全校，大多数模板都提供了转义的功能。将能形成HTML标签的字符转换城安全字符。
+
+   3. 模板逻辑
+
+   4. 集成文件系统
+
+      ```javascript
+      var cache = {};
+      var VIEW_FOLDER = '/path/to/wwwroot/views';
+      
+      res.render = function(viewname, data) {
+          if (!cache[viewname]) {
+              var text;
+              try {
+                  text = fs.readFileSync(path.join(VIEW_FOLDER, viewname), 'utf8');
+              } catch(e) {
+                  res.writeHead(500, {'Content-Type': 'text/html'});
+                  res.end('模板文件错误');
+                  return;
+              }
+              cache[viewname] = compile(text);
+          }
+          var compiled = cache[viewname];
+          res.writeHead(200, {'Content-Type': 'text/html'});
+          var html = compiled(data);
+          res.end(html);
+      }
+      ```
+
+      与文件系统继承后，再引入缓存，解决性能问题，接口也得到简化。
+
+   5. 子模板：可以嵌套在别的模板中，多个模板可嵌入同一个子模板中。维护多个子模板比维护完整而复杂的大模板的成本要低很多，很多复杂问题可以降解为多个小而简单的问题。
+
+   6. 布局视图：子模板的另一种使用方式，又称母版页。
+
+   7. 模板性能：优化模板中的执行表达式
+
+   知名的EJS是ASP、PHP、JSP风格的模板标签，Jade则类似Python、Ruby风格。
+
+4. Bigpipe：解决重数据页面的加载速度问题。
+
+   解决思路：将页面分割成多个部分（pagelet），先向用户输出没有数据的布局，将每个部分逐步输出到前端，再最终渲染填充框架，完成整个网页的渲染。
+
+   1. 页面布局框架：依然由后端渲染而出。
+   2. 持续数据输出
+   3. 前端渲染
 
 ### 总结
 
