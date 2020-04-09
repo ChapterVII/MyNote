@@ -1126,6 +1126,121 @@ Node的http模块只对HTTP报文的头部进行了解析，然后触发了reque
 
 ### 路由解析
 
+1. 文件路径型
+
+   静态文件：URL路径与网站目录的路径一致，无须转换，处理也简单，将请求路径对于的文件发送给客户端即可。
+
+   动态文件：在MVC模式流行之前，根据文件路径执行动态脚本也是基本的路由方式。原理是web服务器根据URL路径找到对应的文件，如/index.asp或index.php。web服务器根据文件名后缀去寻找脚本的解析器，并传入HTTP请求的上下文。这种方式在Node中不常见，因为文件的后缀都是.js，分不清是后端脚本还是前端脚本。
+
+2. MVC
+
+   用户请求的URL路径可以跟具体脚本所在的路径没有任何关系。如何根据URL做路由映射，一种方式是通过手工关联映射，一种是自然关联映射。前者会有一个对应的路由文件来将URL映射到对应的控制器，后者没有这样的文件。
+
+   - 手工映射：除了需要手工配置路由较为原始外，对URL的要求十分灵活，几乎没有格式上的限制。
+
+     ```javascript
+     export.setting = function(req, res) {};
+     
+     var routes = [];
+     var use = function(path, action) {
+         routes.push([path, action]);
+     }
+     // 入口程序
+     function(req, res) {
+         var pathname = url.parse(req.url).pathname;
+         for (var i = 0; i < routes.length; i++) {
+             var route = routes[i];
+             if (pathname === route[0]) {
+                 var action = route[1];
+                 action(req, res);
+                 return;
+             }
+         }
+         // 处理404请求
+         handle404(req, res);
+     }
+     
+     use('/user/setting', exports.setting);
+     use('/setting/user', exports.setting);
+     use('/setting/user/jacksontian', exports.setting);
+     ```
+
+     - 正则匹配
+
+       有些请求需要根据不同的用户显示不同的内容，假设存在成千上万个用户，就不可能手工维护所有用户的路由请求。
+
+       ```javascript
+       use('/profile/:username', function(req, res) {});
+       // 复杂的正则表达式，能实现匹配：
+       // /profile/:username => /profile/jacksontian, /profile/hoover
+       // /user.:ext => /user.xml, /user.json
+       var pathRegexp = function(path) {
+           return new RegExp('...');
+       };
+       
+       var use = function(path, action) {
+           routes.push([pathRegexp(path), action]);
+       }
+       ```
+
+     - 参数解析
+
+       进一步把匹配到的内容如username取出来，在业务中可调用
+
+       ```javascript
+       use('/profile/:username', function(req, res) {
+           // 抽取的内容被设置到req.params处
+           var username = req.params.username;
+       });
+       
+       var pathRegexp = function(path) {
+           return {
+               keys: keys, // 匹配到的键值
+               regexp: new Regexp('...'),
+           }
+       }
+       
+       function (req, res) {
+           var pathname = url.parse(req.url).pathname;
+           for (var i = 0; i < routes.length; i++) {
+               var route = routes[i];
+               var reg = route[0].regexp;
+               var keys = route[0].keys;
+               var matched = reg.exec(pathname);
+               if (!matched) {
+                   var params ={};
+                   for (var i = 0, l = keys.length;; i < l; i++) {
+                       var value = matched[i + 1];
+                       if (value) {
+                           params[key[i]] = value;
+                       }
+                   }
+                   req.params = params;
+                   var action = route[1];
+                   action(req, res);
+                   return;
+               }
+           }
+           handle404(req, res);
+       }
+       ```
+
+   - 自然映射
+
+     手工映射的优点在于路径可以很灵活，但如果项目较大，路由映射的数量会很多。
+
+     实际上路由按一种约定的方式自然而然地实现了路由，而无须维护路由映射。
+
+     如/controller/action/param1/param2/param3，会按约定去找controller目录下的user文件，将其require出来后，调用这个文件模块的setting()方法，而其余的值作为参数直接传递给这个方法。
+
+3. RESTful
+
+   REST全称Representational State Transfer，为表现层状态转化。符合REST规范的设计称为RESTful设计。设计哲学主要将服务器端提供的内容实体看作一个资源，并表现在URL上。
+
+   资源的具体格式由请求报头中的Accept字段和服务器端的支持情况来决定。如果客户端同时接收JSON和XML格式的响应，那么Accept字段是：Accept: application/json, appliction/xml。靠谱的服务器端顾及这个字段，根据自己能响应的格式做出响应。在响应报文中通过Content-Type字段告知客户端是什么格式：Content-Type: application/json。
+
+   所谓REST设计就是：通过URL设计资源、请求方法定义资源的操作，通过Accept决定资源的表现形式。相比MVC，只是将HTTP请求方法加入了路由的过程，以及在URL路径上体现的更资源化。
+
 ### 中间件
 
 ### 页面渲染
