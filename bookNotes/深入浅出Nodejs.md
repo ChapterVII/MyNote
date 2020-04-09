@@ -1063,6 +1063,67 @@ Node在网络安全上提供了3个模块：crypto、tls、https。crypto主要�
 
 ### 数据上传
 
+Node的http模块只对HTTP报文的头部进行了解析，然后触发了request事件。如果请求中还带有内容部分，需要用户自行接收和解析。通过报头的Transfer-Encoding或Content-Length即可判断。在HTTP_Parser解析报头结束后，报文内容会通过data事件触发，只需以流的方式处理即可。
+
+1. 表单数据：默认的表单提交，请求头中的Content-Type字段值为application/x-www-form-urlencoded。报文体内容跟查询字符串相同，解析十分容易。
+
+2. 其他格式：JSON、XML文件等，判断和解析它们都是依据Content-Type值决定，JSON类型的值为application/json，XML的值为application/xml。需注意，Content-Type中可能还附带编码信息。解析XML文件稍复杂，但又支持XML到JSON对象转换的库，如xml2js模块。
+
+3. 附件上传：通常表单内容可以通过urlencoded的方式编码内容形成报文体，再发送给服务器端。特殊表单可以含有file类型的控件，以及需要指定表单属性enctype为multipart/form-data。浏览器在遇到multipart/form-data(代表提交的内容由多部份构成)表单提交时，构造的请求报文与普通表单完全不同。
+
+   报文头中最为特殊的：
+
+   ```javascript
+   // boundary=AaB03x指定的是每部分内容的分界符，AaB03x是随机生成的一段字符串，报文体的内容将通过在它前面添加--分割，报文结束时在前后都加上--表示结束。
+   Content-Type: multipart/form-data; boundary=AaB03x
+   // Content-Length值必须确保是报文体的长度。
+   Content-Length: 18231
+   ```
+
+   模块formidable，基于流式处理解析报文，将接收到的文件写入到系统的临时文件夹中，并返回对应的路径。
+
+4. 数据上传与安全：
+
+   - 内存限制：在解析表单、JSON和XML部分，采取的策略是先保存用户提交的所有数据，然后再解析处理，最后才传递给业务逻辑。存在潜在问题：仅适合数据量小的提交请求，一旦数据量过大，将发生内存被占光的情况。攻击者通过客户端伪造大量数据，如果每次提交1MB的内容，请求数量已达，内存很快被吃光。解决方案：
+
+     - 限制上传内容的大小，一旦超过限制，停止接收数据，并响应400状态码。
+     - 通过流式解析，将数据流导向到磁盘中，Node只保留文件路径等小数据。
+
+     Connect中采用的限制方式：
+
+     ```javascript
+     var bytes = 1024;
+     function(req, res) {
+         var received = 0;
+         var len = req.headers['content-length'] ? parseInt(req.headers['content-length'], 10) : null;
+         
+         // 如果内容超过长度限制，返回请求实体过长的状态码
+         if (len && len > bytes) {
+             res.writeHead(413);
+             res.end();
+             return;
+         }
+         
+         // 没有Content-Length的请求报文，在data事件中判断
+         req.on('data', function(chunk) {
+             received += chunk.length;
+             if (received > bytes) {
+                 req.destroy();
+             }
+         });
+         
+         handle(req, res);
+     }
+     ```
+
+   - CSRF
+
+     跨站请求伪造。
+
+     通常，用户通过浏览器访问服务器端的Session ID是无法被第三方知道的，但是CSRF攻击者并不需要知道Session ID就能让用户中招。
+
+     解决：添加随机值，为每个请求的用户，在Session中赋予一个随机值。
+
 ### 路由解析
 
 ### 中间件
