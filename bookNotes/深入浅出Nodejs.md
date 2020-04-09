@@ -1243,6 +1243,168 @@ Node的http模块只对HTTP报文的头部进行了解析，然后触发了reque
 
 ### 中间件
 
+封装底层细节，为上层提供更方便服务。
+
+从HTTP请求到具体业务逻辑之间，有很多的细节处理。Node的http模块提供了应用层协议网络的封装，对具体业务并没有支持，在业务逻辑之下，必须有开发框架对业务提供支持。
+
+```javascript
+app.use('/user/:username', querystring, cookie, session, function(req, res) {
+    // TODO
+});
+
+// querystring解析中间件
+var querystring = function(req, res, next) {
+    req.query = url.parse(req.url, true).query;
+    next();
+};
+
+// cookie解析中间件
+var cookie = function(req, res, next) {
+    var cookie = req.headers.cookie;
+    var cookies = {};
+    if (cookie) {
+        var list = cookie.split(';');
+        for (var i = 0; i < list.length; i++) {
+            var pair = list[i].split('=');
+            cookies[pair[0].trim()] = pair[1];
+        }
+    }
+    req.cookies = cookies;
+    next();
+};
+
+app.use = function(path) {
+    var handle;
+    if (typeof path === 'string') {
+        handle = {
+            path: pathRegexp(path),
+            stack: Array.prototype.slice.call(arguments, 1),
+    	};
+    } else {
+        handle = {
+            path: pathRegexp('/');
+            stack: Array.prototype.slice.call(arguments, 0),
+        };
+    }
+    routes.all.push(handle);
+}
+
+var match = function(pathname, routes) {
+    var stacks = [];
+    for (var i = 0; i < routes.length; i++) {
+        var route = routes[i];
+        var reg = route.path.regexp;
+        var matched = reg.exec(pathname);
+        if (matched) {
+            stacks = stacks.concat(route.stack);
+        }
+    }
+    return stacks;
+}
+
+var handle = function(req, res, stack) {
+    var next = function() {
+        var middleware = stack.shift();
+        if (middleware) {
+            middleware(req, res, next);
+        }
+    }
+    next();
+}
+
+function(req, res) {
+    var pathname = url.parse(req.url).pathname;
+    var method = req.method.toLowerCase();
+    var stacks = match(pathname, routes.all);
+    if (routes.hasOwnProperty(method)) {
+        stacks.concat(match(pathname, routes[method]));
+    }
+    if (stacks.length) {
+        handle(req, res, stacks);
+    } else {
+        handle404(req, res);
+    }
+}
+
+app.use(querystring);
+app.use(cookie);
+app.use(session);
+app.get('/user/:username', getUser);
+app.put('/user/:username', authorize, updateUser);
+```
+
+1. 异常处理：
+
+   为next()方法添加err参数，并捕获中间件直接抛出的同步异常。
+
+   ```javascript
+   var handle = function(req, res, stack) {
+       var next = function(err) {
+           if (err) {
+               return handle500(err, req, res, stack);
+           }
+           var middleware = stack.shift();
+           if (middleware) {
+               try{
+                   middleware(req, res, next);
+               } catch(ex) {
+                   next(ex);
+               }
+           }
+       }
+       next();
+   }
+   
+   // 中间件异步产生的异常需要自己传递出来
+   var session = function(req, res, next) {
+       var id = req.cookies.sessionid;
+       store.get(id, function(err, session) {
+           if (err) {
+               return next(err);
+           }
+           req.session = session;
+           next();
+       });
+   }
+   ```
+
+   用于处理异常的中间件的设计与普通中间件略有差别
+
+   ```javascript
+   var middleware = function(err, req, res, next) {
+       // TODO
+       next();
+   }
+   
+   app.use(function(err, req, res, next) {
+       // TODO
+   });
+   
+   var handle500 = function(err, req, res, stack) {
+       // 选取异常处理中间件
+       stack = stack.filter(function(middleware) {
+           return middleware.length === 4;
+       })
+       var next = function() {
+           var middleware = stack.shift();
+           if (middleware) {
+               middleware(err, req, res, next);
+           }
+       }
+       next();
+   }
+   ```
+
+2. 中间件与性能：
+
+   业务逻辑往往是最后才执行。为了提早执行，尽早响应给终端用户，提升点如下：
+
+   - 编写高效的中间件：就是提升单个处理单元的处理速度，以今早调用next()。优化方法：
+     - 使用高效的方法，必要时通过jsperf.com测试基准性能。
+     - 缓存需要重复计算的结果。
+     - 避免不必要的计算，如HTTP报文体的解析，对于GET方法完全不需要。
+   - 合理使用路由，避免不必要的中间件执行。
+
 ### 页面渲染
 
 ### 总结
