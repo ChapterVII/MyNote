@@ -1537,10 +1537,6 @@ app.put('/user/:username', authorize, updateUser);
    2. 持续数据输出
    3. 前端渲染
 
-### 总结
-
-### 参考资源
-
 ## 玩转进程
 
 ### 服务模型的变迁
