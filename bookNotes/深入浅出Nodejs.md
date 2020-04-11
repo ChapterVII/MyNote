@@ -1811,6 +1811,20 @@ Master-Worker模式：主从模式。主进程不负责具体的业务处理，�
 
 ### Cluster模块
 
+Node v0.8版本引出了cluster模块，用以解决多核CPU利用率问题，也提供了完善的API，用以处理进程的健壮性问题。
+
+1. 工作原理：是child_process和net模块的组合应用。cluster启动时，会在内部启动TCP服务器，在clustre.fork()子进程时，将TCP服务器端socket文件描述符发送给工作进程。如果进程是通过cluster.fork()复制出来的，那么它的环境变量里就存在NODE_UNIQUE_ID，如果巩固走进程中存在listen()侦听网络端口的调用，它将拿到该文件描述符，通过SO_REUSEADDR端口重用，从而实现多个子进程共享端口。对于普通方式启动的进程，则不存在文件描述符传递共享等。
+
+   在cluster模块应用中，一个主进程只能管理一组工作进程。对于自行通过child_process来操作时，则可以更灵活地控制工作进程，甚至控制多组工作进程。
+
+- Cluster事件：
+  - fork：复制一个工作进程后触发
+  - online：复制好一个工作进程后，工作进程主动发送一条online消息给主进程，主进程收到消息后触发。
+  - listening：工作进程中调用listen()（共享了服务器端socket）后，发送一条listening消息给主进程，主进程收到消息后触发。
+  - disconnect：主进程和工作进程之间IPC通道端口后触发
+  - exit：有工作进程退出时触发
+  - setup：cluster.setupMaster()执行后触发
+
 ### 总结
 
 ### 参考资源
